@@ -150,26 +150,24 @@ It counts solo games only and skips practice games.
 
 ## Decisions that change or sharpen the brief
 
-1. **Accuracy comes from the outline gap, calibrated per place.** Raw overlap
-   (IoU) can't tell a recognisable drawing from a blob. A circle overlaps
-   France by 77%, about as much as a real player's careful drawing. The judge
-   still places the drawing by best overlap, then measures the *outline gap*:
-   the average distance between the drawn line and the real border, both
-   ways, divided by the place's equal-area radius. Each place also gets a
-   *blob gap*, the smallest gap a circle or square reaches on it (capped for
-   thin places). The formula is
-   `accuracy = 1 − (gap / blobGap) × 0.65`. On every shape:
-   - a blob scores about 35% (1x)
-   - a recognisable drawing scores 50–70% (10–100x)
-   - a near-perfect one scores 90% or more (1,000x)
-
-   The curve anchors are 35/50/70/90% → 1/10/100/1,000x.
-   `tests/fixtures/human-drawings.json` holds five drawings by a real
-   play-tester, traced from screenshots, and pins their ordering. Spain
-   (55%, 17x) and Germany (53%, 15x) beat a blob. France and Kenya (about
-   33%, 1x) were drawn as a rounded square and a blob. Half of Norway scores 0%.
-   The canvas also takes roughly the place's proportions (`drawingAspect`), so
-   tall places like Chile have room.
+1. **Accuracy comes from the outline gap, on one scale for every place.** The
+   judge places the drawing by best overlap and turns it up to 30° either way
+   to the best fit, so a tilted map isn't punished. A quarter turn or a mirror
+   image still is. It then measures the *outline gap*: the average distance
+   between the drawn line and the real border, both ways, divided by the
+   place's equal-area radius. `accuracy = 1 − gap / 0.36`. Size and position
+   never count. An earlier version scored drawings relative to the best a
+   plain circle or square could do on each place. Play-testing showed that was
+   wrong: a good square for Egypt, which really is nearly a square, scored 0%.
+   - Play-tester drawings now score Spain 84% and Germany 82%, France 76% and
+     Kenya 70%. A square for Egypt scores 82%. Half of Norway scores 10%.
+   - A plain circle scores 63–67% on compact countries (about 3–5x) and 0% on
+     long ones.
+   - Curve anchors: 55/70/85/95% → 1/10/100/1,000x.
+   - The bot's typical drawing scores about 64% (around 4x), below the
+     play-tester's level, and reaches 100x or more in under 1% of rounds.
+   - Every place gets the same, largest drawing area, so the canvas gives
+     away nothing about the place's size or shape.
 
 2. **A wrong guess costs a point** (`rules.wrongGuessPenalty = 1`; the solved
    base never drops below 1). In the brief, a wrong guess and a timeout both

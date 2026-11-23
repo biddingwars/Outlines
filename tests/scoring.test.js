@@ -1,20 +1,20 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { DEFAULT_CURVE, DEFAULT_RULES, multiplierFor, stampValue, accuracyFromGap, BLOB_ACCURACY, basePointsFor, roundScore, validateCurve } from '../engine/scoring.js';
+import { DEFAULT_CURVE, DEFAULT_RULES, multiplierFor, stampValue, accuracyFromGap, ZERO_GAP, basePointsFor, roundScore, validateCurve } from '../engine/scoring.js';
 
 test('curve hits its anchors', () => {
   assert.equal(multiplierFor(0), 1);
-  assert.equal(multiplierFor(0.3), 1);
-  assert.equal(multiplierFor(0.35), 1);
-  assert.equal(multiplierFor(0.5), 10);
-  assert.equal(multiplierFor(0.7), 100);
-  assert.equal(multiplierFor(0.9), 1000);
+  assert.equal(multiplierFor(0.5), 1);
+  assert.equal(multiplierFor(0.55), 1);
+  assert.equal(multiplierFor(0.7), 10);
+  assert.equal(multiplierFor(0.85), 100);
+  assert.equal(multiplierFor(0.95), 1000);
   assert.equal(multiplierFor(1), 1000);
 });
 
 test('curve is logarithmic between anchors and never decreases', () => {
-  assert.equal(multiplierFor(0.6), stampValue(Math.sqrt(1000)));
-  assert.equal(multiplierFor(0.8), stampValue(Math.sqrt(100000)));
+  assert.equal(multiplierFor(0.625), stampValue(Math.sqrt(10)));
+  assert.equal(multiplierFor(0.775), stampValue(Math.sqrt(1000)));
   let prev = 0;
   for (let a = 0; a <= 1.0001; a += 0.001) {
     const m = multiplierFor(a);
@@ -29,18 +29,13 @@ test('stamp values have two significant figures', () => {
   assert.equal(stampValue(NaN), 1);
 });
 
-test('accuracy comes from the outline gap, relative to a blob', () => {
-  assert.equal(accuracyFromGap(0, 0.1), 1);
-  assert.equal(accuracyFromGap(0.1, 0.1), BLOB_ACCURACY);
-  assert.equal(accuracyFromGap(0.05, 0.1), Math.round((1 - 0.5 * (1 - BLOB_ACCURACY)) * 1000) / 1000);
-  assert.equal(accuracyFromGap(0.5, 0.1), 0);
-  assert.equal(accuracyFromGap(Infinity, 0.1), 0);
-  assert.equal(accuracyFromGap(NaN, 0.1), 0);
-  assert.equal(accuracyFromGap(0.05, 0), 0);
-});
-
-test('a blob earns 1x', () => {
-  assert.equal(multiplierFor(BLOB_ACCURACY), 1);
+test('accuracy comes from the outline gap, the same scale for every place', () => {
+  assert.equal(accuracyFromGap(0), 1);
+  assert.equal(accuracyFromGap(ZERO_GAP / 2), 0.5);
+  assert.equal(accuracyFromGap(ZERO_GAP), 0);
+  assert.equal(accuracyFromGap(2), 0);
+  assert.equal(accuracyFromGap(Infinity), 0);
+  assert.equal(accuracyFromGap(NaN), 0);
 });
 
 test('base points by clue, minus wrong guesses, floor 1 when solved', () => {

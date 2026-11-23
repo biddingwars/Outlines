@@ -611,9 +611,8 @@ function drawScreen() {
 function sizeCanvas() {
   const box = $('#cbox'), cv = $('#cv'), stage = $('#stage'); if (!box || !cv || !stage) return;
   const r = stage.getBoundingClientRect();
-  const aspect = Engine.drawingAspect(itemOf(G.places[G.round]).outline);
-  let w = r.width - 8, h = r.height - 8;
-  if (w / h > aspect) w = h * aspect; else h = w / aspect;
+  // the same, largest possible drawing area for every place (shape is judged, never size)
+  const w = r.width - 8, h = r.height - 8;
   DR.w = Math.max(140, Math.floor(w)); DR.h = Math.max(140, Math.floor(h));
   const dpr = Math.min(3, devicePixelRatio || 1);
   cv.width = DR.w * dpr; cv.height = DR.h * dpr; cv.style.width = DR.w + 'px'; cv.style.height = DR.h + 'px';

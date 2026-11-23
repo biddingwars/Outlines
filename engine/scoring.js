@@ -7,10 +7,10 @@
  */
 export const DEFAULT_CURVE = Object.freeze({
   anchors: Object.freeze([
-    Object.freeze([0.35, 1]),
-    Object.freeze([0.5, 10]),
-    Object.freeze([0.7, 100]),
-    Object.freeze([0.9, 1000]),
+    Object.freeze([0.55, 1]),
+    Object.freeze([0.7, 10]),
+    Object.freeze([0.85, 100]),
+    Object.freeze([0.95, 1000]),
   ]),
 });
 
@@ -22,19 +22,23 @@ export const DEFAULT_RULES = Object.freeze({
   curve: DEFAULT_CURVE,
 });
 
-/** Accuracy a featureless blob (circle or square) gets on any shape. */
-export const BLOB_ACCURACY = 0.35;
+/**
+ * The outline gap at which accuracy reaches 0. The gap is the average distance
+ * between the drawn line and the real border (both ways), as a share of the
+ * place's equal-area radius: a careful sketch is around 0.06–0.10, a plain
+ * circle on a compact country 0.10–0.19, a wrong shape 0.3 or more.
+ */
+export const ZERO_GAP = 0.36;
 
 /**
- * Accuracy from the outline gap (see judge.outlineGap), relative to the gap a
- * featureless blob leaves on the same shape. Linear: a perfect outline is
- * 100 %, a blob is 35 %, twice the blob's gap or worse bottoms out near 0.
- * Per-shape calibration keeps round and thin places equally fair.
- * Rounded to 0.1 %.
+ * Accuracy from the outline gap (see judge.outlineGap): 100 % for a perfect
+ * outline, falling linearly to 0 % at ZERO_GAP. The same scale for every place,
+ * so a place that really is close to a square (Egypt, Colorado) rewards a good
+ * square. Rounded to 0.1 %.
  */
-export function accuracyFromGap(gap, blobGap, blobAccuracy = BLOB_ACCURACY) {
-  if (!(gap >= 0) || !Number.isFinite(gap) || !(blobGap > 0)) return 0;
-  const a = 1 - (gap / blobGap) * (1 - blobAccuracy);
+export function accuracyFromGap(gap, zeroGap = ZERO_GAP) {
+  if (!(gap >= 0) || !Number.isFinite(gap)) return 0;
+  const a = 1 - gap / zeroGap;
   const clamped = a < 0 ? 0 : a > 1 ? 1 : a;
   return Math.round(clamped * 1000) / 1000;
 }

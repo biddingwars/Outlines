@@ -20,6 +20,16 @@ export const JUDGE_DEFAULTS = Object.freeze({
   maxSpan: 40000, // raster work budget: total rows crossed by the drawing's edges
   scales: [0.92, 0.96, 1, 1.04, 1.08],
   shifts: [-0.04, 0, 0.04], // in target max-radii
+  // Tilts tried (cos, sin) for -30° … +30°: a fixed table, so scoring never depends on Math.cos.
+  rotations: [
+    [1, 0],
+    [0.984807753012, -0.173648177667],
+    [0.984807753012, 0.173648177667],
+    [0.939692620786, -0.342020143326],
+    [0.939692620786, 0.342020143326],
+    [0.866025403784, -0.5],
+    [0.866025403784, 0.5],
+  ],
   samples: 256, // boundary samples per shape for the gap measure
   minBlobGap: 0.04, // floor for a shape's blob gap (near-rectangular states)
   maxBlobGap: 0.2, // ceiling for thin shapes, where a blob is too easy to beat
@@ -144,11 +154,6 @@ export function prepareTarget(outline, opts = {}) {
     baseline: 0,
     blobGap: 0,
   };
-  if (o.baseline !== false) {
-    const blob = blobBaseline(target, o);
-    target.baseline = blob.overlap;
-    target.blobGap = Math.min(o.maxBlobGap, Math.max(o.minBlobGap, blob.gap));
-  }
   return target;
 }
 
@@ -265,13 +270,16 @@ export function judge(strokes, target, opts = {}) {
   if (!(s0 > 0 && Number.isFinite(s0) && Number.isFinite(m.centroid[0]) && Number.isFinite(m.centroid[1]))) return empty;
   const n = target.grid;
   const F = target.frame;
-  let best = null;
-  const work = tame(rings, s0 * F.scale, o.maxSpan, Math.max(bb.w, bb.h));
+  const [cx, cy] = m.centroid;
+  const rotate = (rs, [co, si]) =>
+    co === 1 ? rs : rs.map((r) => r.map(([x, y]) => [cx + (x - cx) * co - (y - cy) * si, cy + (x - cx) * si + (y - cy) * co]));
+  const base = tame(rings, s0 * F.scale, o.maxSpan, Math.max(bb.w, bb.h));
 
-  const tryFit = (k, dx, dy) => {
+  // One fit of the drawing (already rotated) at scale k and offset (dx, dy).
+  const fitAt = (work, k, dx, dy) => {
     const s = s0 * k;
-    const ox = target.centroid[0] + dx * target.radius - m.centroid[0] * s;
-    const oy = target.centroid[1] + dy * target.radius - m.centroid[1] * s;
+    const ox = target.centroid[0] + dx * target.radius - cx * s;
+    const oy = target.centroid[1] + dy * target.radius - cy * s;
     // drawing → outline units → grid
     const t = { scale: s * F.scale, tx: ox * F.scale + F.tx, ty: oy * F.scale + F.ty };
     const bits = rasterizeUnion(work, t, n);
@@ -279,17 +287,34 @@ export function judge(strokes, target, opts = {}) {
     // Area of the drawing that fell outside the frame still counts against it.
     const expected = m.area * t.scale * t.scale;
     const inside = countOn(bits);
-    const gx0 = bb.minX * t.scale + t.tx;
-    const gy0 = bb.minY * t.scale + t.ty;
-    const gx1 = bb.maxX * t.scale + t.tx;
-    const gy1 = bb.maxY * t.scale + t.ty;
+    const wb = bbox(work.flat());
+    const gx0 = wb.minX * t.scale + t.tx;
+    const gy0 = wb.minY * t.scale + t.ty;
+    const gx1 = wb.maxX * t.scale + t.tx;
+    const gy1 = wb.maxY * t.scale + t.ty;
     const clipped = gx0 < 0 || gy0 < 0 || gx1 > n || gy1 > n ? Math.max(0, expected - inside) : 0;
     const iou = union + clipped > 0 ? inter / (union + clipped) : 0;
-    if (!best || iou > best.iou) best = { iou, fit: { scale: s, tx: ox, ty: oy }, k, dx, dy };
+    return { iou, scale: s, tx: ox, ty: oy, k, dx, dy };
   };
 
+  // 1. Which way round? A hand-drawn map is rarely held perfectly north-up:
+  //    try a few tilts (fixed table, so every engine computes the same thing).
+  let bestRot = null;
+  for (const rot of o.rotations) {
+    const work = rotate(base, rot);
+    for (const dx of o.shifts) for (const dy of o.shifts) {
+      const f = fitAt(work, 1, dx, dy);
+      if (!bestRot || f.iou > bestRot.iou) bestRot = { iou: f.iou, rot, work };
+    }
+  }
+  // 2. Size and position at that tilt, then one refinement pass at half step.
+  const work = bestRot.work;
+  let best = null;
+  const tryFit = (k, dx, dy) => {
+    const f = fitAt(work, k, dx, dy);
+    if (!best || f.iou > best.iou) best = f;
+  };
   for (const k of o.scales) for (const dx of o.shifts) for (const dy of o.shifts) tryFit(k, dx, dy);
-  // One refinement pass at half step around the best coarse fit.
   const c = best;
   const ks = (o.scales[1] - o.scales[0]) / 2;
   const ds = (o.shifts[1] - o.shifts[0]) / 2;
@@ -298,17 +323,17 @@ export function judge(strokes, target, opts = {}) {
   }
 
   const iou = best.iou;
-  const f = best.fit;
-  const placed = work.map((r) => r.map(([x, y]) => [x * f.scale + f.tx, y * f.scale + f.ty]));
+  const fit = { scale: best.scale, tx: best.tx, ty: best.ty, cos: bestRot.rot[0], sin: bestRot.rot[1], cx, cy };
+  const placed = work.map((r) => r.map(([x, y]) => [x * fit.scale + fit.tx, y * fit.scale + fit.ty]));
   const gap = outlineGap(target, placed, o.samples);
   return {
-    accuracy: o.baseline === false ? 0 : accuracyFromGap(gap, target.blobGap),
+    accuracy: accuracyFromGap(gap),
     overlap: Math.round(iou * 1000) / 1000,
     iou,
     gap,
     baseline: target.baseline,
     empty: false,
-    fit: best.fit,
+    fit,
     rings,
   };
 }
@@ -333,9 +358,17 @@ function tame(rings, gridScale, budget, size) {
   return out;
 }
 
-/** Map the real outline into drawing (canvas) coordinates using a judge fit. */
+/** Map the real outline into drawing (canvas) coordinates using a judge fit (undoing its tilt). */
 export function outlineToCanvas(outline, fit) {
-  return outline.map(([x, y]) => [(x - fit.tx) / fit.scale, (y - fit.ty) / fit.scale]);
+  const co = fit.cos ?? 1;
+  const si = fit.sin ?? 0;
+  const cx = fit.cx ?? 0;
+  const cy = fit.cy ?? 0;
+  return outline.map(([x, y]) => {
+    const qx = (x - fit.tx) / fit.scale - cx;
+    const qy = (y - fit.ty) / fit.scale - cy;
+    return [cx + qx * co + qy * si, cy - qx * si + qy * co];
+  });
 }
 
 /**

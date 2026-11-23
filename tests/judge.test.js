@@ -26,13 +26,13 @@ test('position and size of the drawing do not matter', () => {
   assert.ok(Math.abs(big - base) <= 0.005, `${big} vs ${base}`);
 });
 
-test('rotation and mirroring do matter (north is up)', () => {
+test('a quarter turn or a mirror image still matters (north is up)', () => {
   const ring = box(outline(world, 'ITA'));
   const t = world.targetFor('ITA');
   const rot = ring.map(([x, y]) => [y, -x]);
   const mirror = ring.map(([x, y]) => [-x, y]);
   assert.ok(judge([rot], t).accuracy < 0.3);
-  assert.ok(judge([mirror], t).accuracy < 0.6);
+  assert.ok(judge([mirror], t).accuracy < 0.8);
 });
 
 test('the same drawing always gets the same score', () => {
@@ -44,15 +44,35 @@ test('the same drawing always gets the same score', () => {
   assert.deepEqual(a.fit, b.fit);
 });
 
-test('a featureless circle or square earns only 1x', () => {
+test('a featureless circle or square scores far below a real drawing', () => {
   const circle = [Array.from({ length: 64 }, (_, i) => [Math.cos((i / 64) * 6.2832) * 100, Math.sin((i / 64) * 6.2832) * 100])];
-  const square = [[[0, 0], [100, 0], [100, 100], [0, 100]]];
-  for (const [pack, id] of [[world, 'FRA'], [world, 'ESP'], [world, 'DEU'], [us, 'CO'], [us, 'AZ']]) {
+  for (const [pack, id] of [[world, 'FRA'], [world, 'ESP'], [world, 'DEU'], [world, 'IND']]) {
     const t = pack.targetFor(id);
-    assert.equal(multiplierFor(judge(circle, t).accuracy), 1, `${id} circle`);
-    assert.equal(multiplierFor(judge(square, t).accuracy), 1, `${id} square`);
-    assert.ok(t.baseline > 0.5, `${id} baseline ${t.baseline}`);
+    const blob = judge(circle, t).accuracy;
+    const real = judge([box(pack.byId.get(id).outline)], t).accuracy;
+    assert.ok(multiplierFor(blob) <= 10, `${id} circle ${blob}`);
+    assert.ok(real - blob > 0.25, `${id} ${real} vs ${blob}`);
   }
+  // On long, thin places a blob is worthless.
+  for (const id of ['CHL', 'NOR', 'ITA']) assert.equal(multiplierFor(judge(circle, world.targetFor(id)).accuracy), 1, id);
+});
+
+test('a square drawn for a square-ish place scores well (Egypt)', () => {
+  const square = [[[0, 0], [100, 0], [100, 100], [0, 100]]];
+  assert.ok(multiplierFor(judge(square, world.targetFor('EGY')).accuracy) >= 30);
+});
+
+test('a drawing tilted by up to 30° is turned back before judging', () => {
+  const ring = box(outline(world, 'ITA'));
+  const t = world.targetFor('ITA');
+  const a = (20 * Math.PI) / 180;
+  const c = [500, 500];
+  const tilted = ring.map(([x, y]) => [c[0] + (x - c[0]) * Math.cos(a) - (y - c[1]) * Math.sin(a), c[1] + (x - c[0]) * Math.sin(a) + (y - c[1]) * Math.cos(a)]);
+  const straight = judge([ring], t).accuracy;
+  const r = judge([tilted], t);
+  assert.ok(r.accuracy > straight - 0.08, `${r.accuracy} vs ${straight}`);
+  // and the fit maps the outline back onto the tilted sketch
+  assert.ok(judge([outlineToCanvas(outline(world, 'ITA'), r.fit)], t).accuracy > 0.9);
 });
 
 test('an outline drawn in several pieces, some backwards, is rejoined', () => {
@@ -95,14 +115,13 @@ test('thin shapes get a finer grid', () => {
 
 // Real drawings by a play-tester, traced from screenshots of the test build.
 // What they should score is a judgement call; these pin the agreed ordering.
-test('real player drawings: recognisable shapes beat blobs', () => {
+test('real player drawings: recognisable shapes are rewarded', () => {
   const human = JSON.parse(readFileSync(new URL('./fixtures/human-drawings.json', import.meta.url), 'utf8'));
   const acc = Object.fromEntries(Object.entries(human).map(([id, d]) => [id, judge([d.drawing], world.targetFor(id)).accuracy]));
-  // Spain and Germany were drawn with their real features: clearly above a blob.
-  assert.ok(acc.ESP >= 0.5 && multiplierFor(acc.ESP) >= 10, `ESP ${acc.ESP}`);
-  assert.ok(acc.DEU >= 0.5 && multiplierFor(acc.DEU) >= 10, `DEU ${acc.DEU}`);
-  // France and Kenya were drawn as a rounded square and a blob: blob level, not zero.
-  for (const id of ['FRA', 'KEN']) assert.ok(acc[id] > 0.25 && acc[id] < 0.4, `${id} ${acc[id]}`);
-  // Only the southern half of Norway was drawn: low.
+  // Spain and Germany were drawn with their real features.
+  for (const id of ['ESP', 'DEU']) assert.ok(multiplierFor(acc[id]) >= 40, `${id} ${acc[id]}`);
+  // France (a rounded square) and Kenya (a blob) are rough but still earn something.
+  for (const id of ['FRA', 'KEN']) assert.ok(multiplierFor(acc[id]) >= 5 && multiplierFor(acc[id]) < 60, `${id} ${acc[id]}`);
+  // Only the southern half of Norway was drawn.
   assert.ok(acc.NOR < 0.3, `NOR ${acc.NOR}`);
 });

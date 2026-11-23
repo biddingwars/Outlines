@@ -1580,4 +1580,27 @@ const STRX2 = {
  }
 };
 Object.keys(STRX2).forEach(l => Object.assign(STR[l], STRX2[l]));
+const STRX3 = {
+ "en": {
+  "rulesP4": "Accuracy is how closely your line follows the real border. Size, position and a slight tilt don’t matter. It multiplies your points, from 1× up to 1,000×.",
+  "tierBlob": "KEEP PRACTISING"
+ },
+ "de": {
+  "rulesP4": "Die Genauigkeit misst, wie nah deine Linie an der echten Grenze verläuft. Größe, Lage und eine leichte Neigung spielen keine Rolle. Sie multipliziert deine Punkte, von 1× bis 1.000×.",
+  "tierBlob": "WEITER ÜBEN"
+ },
+ "it": {
+  "rulesP4": "La precisione misura quanto la tua linea segue il confine reale. Dimensione, posizione e una leggera inclinazione non contano. Moltiplica i tuoi punti, da 1× fino a 1.000×.",
+  "tierBlob": "CONTINUA AD ALLENARTI"
+ },
+ "es": {
+  "rulesP4": "La precisión mide lo cerca que tu línea sigue la frontera real. El tamaño, la posición y una ligera inclinación no importan. Multiplica tus puntos, de 1× a 1.000×.",
+  "tierBlob": "SIGUE PRACTICANDO"
+ },
+ "fr": {
+  "rulesP4": "La précision mesure à quel point ton trait suit la vraie frontière. La taille, la position et une légère inclinaison ne comptent pas. Elle multiplie tes points, de 1× à 1 000×.",
+  "tierBlob": "CONTINUE À T’ENTRAÎNER"
+ }
+};
+Object.keys(STRX3).forEach(l => Object.assign(STR[l], STRX3[l]));
 const STRP = {};

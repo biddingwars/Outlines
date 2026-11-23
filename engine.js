@@ -445,10 +445,10 @@
    */
   const DEFAULT_CURVE = Object.freeze({
     anchors: Object.freeze([
-      Object.freeze([0.35, 1]),
-      Object.freeze([0.5, 10]),
-      Object.freeze([0.7, 100]),
-      Object.freeze([0.9, 1000]),
+      Object.freeze([0.55, 1]),
+      Object.freeze([0.7, 10]),
+      Object.freeze([0.85, 100]),
+      Object.freeze([0.95, 1000]),
     ]),
   });
 
@@ -460,19 +460,23 @@
     curve: DEFAULT_CURVE,
   });
 
-  /** Accuracy a featureless blob (circle or square) gets on any shape. */
-  const BLOB_ACCURACY = 0.35;
+  /**
+   * The outline gap at which accuracy reaches 0. The gap is the average distance
+   * between the drawn line and the real border (both ways), as a share of the
+   * place's equal-area radius: a careful sketch is around 0.06–0.10, a plain
+   * circle on a compact country 0.10–0.19, a wrong shape 0.3 or more.
+   */
+  const ZERO_GAP = 0.36;
 
   /**
-   * Accuracy from the outline gap (see judge.outlineGap), relative to the gap a
-   * featureless blob leaves on the same shape. Linear: a perfect outline is
-   * 100 %, a blob is 35 %, twice the blob's gap or worse bottoms out near 0.
-   * Per-shape calibration keeps round and thin places equally fair.
-   * Rounded to 0.1 %.
+   * Accuracy from the outline gap (see judge.outlineGap): 100 % for a perfect
+   * outline, falling linearly to 0 % at ZERO_GAP. The same scale for every place,
+   * so a place that really is close to a square (Egypt, Colorado) rewards a good
+   * square. Rounded to 0.1 %.
    */
-  function accuracyFromGap(gap, blobGap, blobAccuracy = BLOB_ACCURACY) {
-    if (!(gap >= 0) || !Number.isFinite(gap) || !(blobGap > 0)) return 0;
-    const a = 1 - (gap / blobGap) * (1 - blobAccuracy);
+  function accuracyFromGap(gap, zeroGap = ZERO_GAP) {
+    if (!(gap >= 0) || !Number.isFinite(gap)) return 0;
+    const a = 1 - gap / zeroGap;
     const clamped = a < 0 ? 0 : a > 1 ? 1 : a;
     return Math.round(clamped * 1000) / 1000;
   }
@@ -557,6 +561,16 @@
     maxSpan: 40000, // raster work budget: total rows crossed by the drawing's edges
     scales: [0.92, 0.96, 1, 1.04, 1.08],
     shifts: [-0.04, 0, 0.04], // in target max-radii
+    // Tilts tried (cos, sin) for -30° … +30°: a fixed table, so scoring never depends on Math.cos.
+    rotations: [
+      [1, 0],
+      [0.984807753012, -0.173648177667],
+      [0.984807753012, 0.173648177667],
+      [0.939692620786, -0.342020143326],
+      [0.939692620786, 0.342020143326],
+      [0.866025403784, -0.5],
+      [0.866025403784, 0.5],
+    ],
     samples: 256, // boundary samples per shape for the gap measure
     minBlobGap: 0.04, // floor for a shape's blob gap (near-rectangular states)
     maxBlobGap: 0.2, // ceiling for thin shapes, where a blob is too easy to beat
@@ -681,11 +695,6 @@
       baseline: 0,
       blobGap: 0,
     };
-    if (o.baseline !== false) {
-      const blob = blobBaseline(target, o);
-      target.baseline = blob.overlap;
-      target.blobGap = Math.min(o.maxBlobGap, Math.max(o.minBlobGap, blob.gap));
-    }
     return target;
   }
 
@@ -802,13 +811,16 @@
     if (!(s0 > 0 && Number.isFinite(s0) && Number.isFinite(m.centroid[0]) && Number.isFinite(m.centroid[1]))) return empty;
     const n = target.grid;
     const F = target.frame;
-    let best = null;
-    const work = tame(rings, s0 * F.scale, o.maxSpan, Math.max(bb.w, bb.h));
+    const [cx, cy] = m.centroid;
+    const rotate = (rs, [co, si]) =>
+      co === 1 ? rs : rs.map((r) => r.map(([x, y]) => [cx + (x - cx) * co - (y - cy) * si, cy + (x - cx) * si + (y - cy) * co]));
+    const base = tame(rings, s0 * F.scale, o.maxSpan, Math.max(bb.w, bb.h));
 
-    const tryFit = (k, dx, dy) => {
+    // One fit of the drawing (already rotated) at scale k and offset (dx, dy).
+    const fitAt = (work, k, dx, dy) => {
       const s = s0 * k;
-      const ox = target.centroid[0] + dx * target.radius - m.centroid[0] * s;
-      const oy = target.centroid[1] + dy * target.radius - m.centroid[1] * s;
+      const ox = target.centroid[0] + dx * target.radius - cx * s;
+      const oy = target.centroid[1] + dy * target.radius - cy * s;
       // drawing → outline units → grid
       const t = { scale: s * F.scale, tx: ox * F.scale + F.tx, ty: oy * F.scale + F.ty };
       const bits = rasterizeUnion(work, t, n);
@@ -816,17 +828,34 @@
       // Area of the drawing that fell outside the frame still counts against it.
       const expected = m.area * t.scale * t.scale;
       const inside = countOn(bits);
-      const gx0 = bb.minX * t.scale + t.tx;
-      const gy0 = bb.minY * t.scale + t.ty;
-      const gx1 = bb.maxX * t.scale + t.tx;
-      const gy1 = bb.maxY * t.scale + t.ty;
+      const wb = bbox(work.flat());
+      const gx0 = wb.minX * t.scale + t.tx;
+      const gy0 = wb.minY * t.scale + t.ty;
+      const gx1 = wb.maxX * t.scale + t.tx;
+      const gy1 = wb.maxY * t.scale + t.ty;
       const clipped = gx0 < 0 || gy0 < 0 || gx1 > n || gy1 > n ? Math.max(0, expected - inside) : 0;
       const iou = union + clipped > 0 ? inter / (union + clipped) : 0;
-      if (!best || iou > best.iou) best = { iou, fit: { scale: s, tx: ox, ty: oy }, k, dx, dy };
+      return { iou, scale: s, tx: ox, ty: oy, k, dx, dy };
     };
 
+    // 1. Which way round? A hand-drawn map is rarely held perfectly north-up:
+    //    try a few tilts (fixed table, so every engine computes the same thing).
+    let bestRot = null;
+    for (const rot of o.rotations) {
+      const work = rotate(base, rot);
+      for (const dx of o.shifts) for (const dy of o.shifts) {
+        const f = fitAt(work, 1, dx, dy);
+        if (!bestRot || f.iou > bestRot.iou) bestRot = { iou: f.iou, rot, work };
+      }
+    }
+    // 2. Size and position at that tilt, then one refinement pass at half step.
+    const work = bestRot.work;
+    let best = null;
+    const tryFit = (k, dx, dy) => {
+      const f = fitAt(work, k, dx, dy);
+      if (!best || f.iou > best.iou) best = f;
+    };
     for (const k of o.scales) for (const dx of o.shifts) for (const dy of o.shifts) tryFit(k, dx, dy);
-    // One refinement pass at half step around the best coarse fit.
     const c = best;
     const ks = (o.scales[1] - o.scales[0]) / 2;
     const ds = (o.shifts[1] - o.shifts[0]) / 2;
@@ -835,17 +864,17 @@
     }
 
     const iou = best.iou;
-    const f = best.fit;
-    const placed = work.map((r) => r.map(([x, y]) => [x * f.scale + f.tx, y * f.scale + f.ty]));
+    const fit = { scale: best.scale, tx: best.tx, ty: best.ty, cos: bestRot.rot[0], sin: bestRot.rot[1], cx, cy };
+    const placed = work.map((r) => r.map(([x, y]) => [x * fit.scale + fit.tx, y * fit.scale + fit.ty]));
     const gap = outlineGap(target, placed, o.samples);
     return {
-      accuracy: o.baseline === false ? 0 : accuracyFromGap(gap, target.blobGap),
+      accuracy: accuracyFromGap(gap),
       overlap: Math.round(iou * 1000) / 1000,
       iou,
       gap,
       baseline: target.baseline,
       empty: false,
-      fit: best.fit,
+      fit,
       rings,
     };
   }
@@ -870,9 +899,17 @@
     return out;
   }
 
-  /** Map the real outline into drawing (canvas) coordinates using a judge fit. */
+  /** Map the real outline into drawing (canvas) coordinates using a judge fit (undoing its tilt). */
   function outlineToCanvas(outline, fit) {
-    return outline.map(([x, y]) => [(x - fit.tx) / fit.scale, (y - fit.ty) / fit.scale]);
+    const co = fit.cos ?? 1;
+    const si = fit.sin ?? 0;
+    const cx = fit.cx ?? 0;
+    const cy = fit.cy ?? 0;
+    return outline.map(([x, y]) => {
+      const qx = (x - fit.tx) / fit.scale - cx;
+      const qy = (y - fit.ty) / fit.scale - cy;
+      return [cx + qx * co + qy * si, cy - qx * si + qy * co];
+    });
   }
 
   /**
@@ -1271,7 +1308,7 @@
 
   /** Per-round drawing skill in [0, 1]. Shape tuned by tools/tune-curve.mjs. */
   function rollSkill(rng) {
-    const s = 0.36 + 0.17 * rng.normal();
+    const s = 0.2 + 0.15 * rng.normal();
     return s < 0.02 ? 0.02 : s > 0.98 ? 0.98 : s;
   }
 
@@ -1912,5 +1949,5 @@
   }
 
 
-  return { hashString, deriveSeed, toSeed, createRng, isFinitePoint, signedArea, area, centroid, bbox, dist, perimeter, maxRadius, simplify, simplifyRing, resample, projectLAEA, rasterize, rasterizeUnion, countOn, moments, overlap, DEFAULT_CURVE, DEFAULT_RULES, BLOB_ACCURACY, accuracyFromGap, stampValue, multiplierFor, validateCurve, basePointsFor, roundScore, JUDGE_DEFAULTS, unflatten, cleanStrokes, prepareTarget, outlineGap, blobBaseline, judge, outlineToCanvas, drawingAspect, outlineToBox, LANGS, fold, buildIndex, resolve, suggest, OPS, opOf, evalTest, filterByTests, CLUES_PER_ITEM, validatePack, preparePack, poolFor, hasCoords, TEMPERAMENTS, CLUE_RECALL, rollKnowledge, rollSkill, moodFor, thresholdFor, decide, sketch, line, SEAT_COLORS, SEAT_SHAPES, MAX_SEATS, LIMITS, BOT_CANVAS, normalizeConfig, isPractice, createGame, totals, botView, botLine, activeSeat, activeTurn, step, replay, revealedClues, results, RECORD_VERSION, emptyRecord, sanitizeRecord, recordGame, recordDrawing };
+  return { hashString, deriveSeed, toSeed, createRng, isFinitePoint, signedArea, area, centroid, bbox, dist, perimeter, maxRadius, simplify, simplifyRing, resample, projectLAEA, rasterize, rasterizeUnion, countOn, moments, overlap, DEFAULT_CURVE, DEFAULT_RULES, ZERO_GAP, accuracyFromGap, stampValue, multiplierFor, validateCurve, basePointsFor, roundScore, JUDGE_DEFAULTS, unflatten, cleanStrokes, prepareTarget, outlineGap, blobBaseline, judge, outlineToCanvas, drawingAspect, outlineToBox, LANGS, fold, buildIndex, resolve, suggest, OPS, opOf, evalTest, filterByTests, CLUES_PER_ITEM, validatePack, preparePack, poolFor, hasCoords, TEMPERAMENTS, CLUE_RECALL, rollKnowledge, rollSkill, moodFor, thresholdFor, decide, sketch, line, SEAT_COLORS, SEAT_SHAPES, MAX_SEATS, LIMITS, BOT_CANVAS, normalizeConfig, isPractice, createGame, totals, botView, botLine, activeSeat, activeTurn, step, replay, revealedClues, results, RECORD_VERSION, emptyRecord, sanitizeRecord, recordGame, recordDrawing };
 });
