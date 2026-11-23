@@ -49,16 +49,16 @@ export const STRATEGIES = {
     draw: () => circle(),
   },
   decentPlayer: {
-    name: 'knows the place by clue 3, draws with skill 0.6',
+    name: 'knows the place by clue 3, draws with skill 0.4 (like the play-tester)',
     blind: false,
     guess: ({ clueIndex, answerFor }) => (clueIndex >= 2 ? answerFor() : null),
-    draw: ({ outline, rng }) => sketch(outline, 0.6, rng),
+    draw: ({ outline, rng }) => sketch(outline, 0.4, rng),
   },
   strongPlayer: {
-    name: 'knows the place by clue 2, draws with skill 0.75',
+    name: 'knows the place by clue 2, draws with skill 0.6',
     blind: false,
     guess: ({ clueIndex, answerFor }) => (clueIndex >= 1 ? answerFor() : null),
-    draw: ({ outline, rng }) => sketch(outline, 0.75, rng),
+    draw: ({ outline, rng }) => sketch(outline, 0.6, rng),
   },
 };
 

@@ -12,11 +12,12 @@ export function goldenEntry(flat) {
   const perfect = [outlineToBox(ring, 1000).map(([x, y]) => [Math.round(x * 10) / 10, Math.round(y * 10) / 10])];
   const r = (strokes) => {
     const j = judge(strokes, t);
-    return [j.overlap, j.accuracy];
+    return [j.overlap, j.accuracy, Math.round(j.gap * 10000) / 10000];
   };
   return {
     grid: t.grid,
     baseline: t.baseline,
+    blobGap: t.blobGap,
     perfect: r(perfect),
     circle: r(CIRCLE),
     skill50: r(sketch(ring, 0.5, createRng(42, 'golden', 0.5))),

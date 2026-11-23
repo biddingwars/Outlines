@@ -4,9 +4,9 @@
 //
 // Deterministic: same strokes in → same numbers out, on any JS engine.
 
-import { area, bbox, centroid, dist, isFinitePoint, maxRadius, simplifyRing } from './geometry.js';
+import { area, bbox, centroid, dist, isFinitePoint, maxRadius, perimeter, resample, simplifyRing } from './geometry.js';
 import { countOn, moments, overlap, rasterize, rasterizeUnion } from './raster.js';
-import { shapeAccuracy } from './scoring.js';
+import { accuracyFromGap } from './scoring.js';
 
 export const JUDGE_DEFAULTS = Object.freeze({
   grid: 160, // minimum comparison grid (pixels per side)
@@ -20,6 +20,9 @@ export const JUDGE_DEFAULTS = Object.freeze({
   maxSpan: 40000, // raster work budget: total rows crossed by the drawing's edges
   scales: [0.92, 0.96, 1, 1.04, 1.08],
   shifts: [-0.04, 0, 0.04], // in target max-radii
+  samples: 256, // boundary samples per shape for the gap measure
+  minBlobGap: 0.04, // floor for a shape's blob gap (near-rectangular states)
+  maxBlobGap: 0.2, // ceiling for thin shapes, where a blob is too easy to beat
 });
 
 /** Flatten an outline stored as [x0,y0,x1,y1,...] into points. */
@@ -136,10 +139,61 @@ export function prepareTarget(outline, opts = {}) {
     bits,
     pixels: m.area,
     grid,
+    req: Math.sqrt(a / Math.PI), // radius of the circle with the same area
+    samples: resample(outline, o.samples),
     baseline: 0,
+    blobGap: 0,
   };
-  if (o.baseline !== false) target.baseline = blobBaseline(target, o);
+  if (o.baseline !== false) {
+    const blob = blobBaseline(target, o);
+    target.baseline = blob.overlap;
+    target.blobGap = Math.min(o.maxBlobGap, Math.max(o.minBlobGap, blob.gap));
+  }
   return target;
+}
+
+function segDist(p, a, b) {
+  const dx = b[0] - a[0];
+  const dy = b[1] - a[1];
+  const len = dx * dx + dy * dy;
+  let t = len ? ((p[0] - a[0]) * dx + (p[1] - a[1]) * dy) / len : 0;
+  t = t < 0 ? 0 : t > 1 ? 1 : t;
+  const x = a[0] + t * dx - p[0];
+  const y = a[1] + t * dy - p[1];
+  return Math.sqrt(x * x + y * y);
+}
+
+function distToRings(p, rings) {
+  let m = Infinity;
+  for (const r of rings) {
+    for (let i = 0, j = r.length - 1; i < r.length; j = i++) {
+      const d = segDist(p, r[j], r[i]);
+      if (d < m) m = d;
+    }
+  }
+  return m;
+}
+
+/**
+ * Average gap between two outlines, both ways (symmetric chamfer distance),
+ * divided by the target's equal-area radius. 0 = identical; a featureless
+ * blob on a compact country is around 0.1.
+ */
+export function outlineGap(target, rings, n = JUDGE_DEFAULTS.samples) {
+  const total = rings.reduce((s, r) => s + perimeter(r), 0);
+  if (!(total > 0)) return Infinity;
+  const drawn = rings.map((r) => resample(r, Math.max(8, Math.round((n * perimeter(r)) / total))));
+  let a = 0;
+  for (const p of target.samples) a += distToRings(p, drawn);
+  let b = 0;
+  let k = 0;
+  for (const r of drawn) {
+    for (const p of r) {
+      b += distToRings(p, [target.samples]);
+      k++;
+    }
+  }
+  return (a / target.samples.length + b / k) / 2 / target.req;
 }
 
 const BLOB_CIRCLE = Array.from({ length: 96 }, (_, i) => {
@@ -151,14 +205,18 @@ const BLOB_CIRCLE = Array.from({ length: 96 }, (_, i) => {
 const BLOB_SQUARE = [[-1000, -1000], [1000, -1000], [1000, 1000], [-1000, 1000]];
 
 /**
- * The best raw IoU a featureless blob (circle or square, auto-fitted like any
- * drawing) reaches on this outline. Drawings are scored on how far they go
- * beyond it, so a blind circle earns 1x on a round country too.
+ * How well a featureless blob (circle or square, auto-fitted like any
+ * drawing) matches this outline: its best overlap and its smallest gap.
+ * Accuracy is scored relative to the blob, so a blind circle earns 1x on a
+ * round country too, while drawing real features pays on every shape.
  */
 export function blobBaseline(target, opts = {}) {
-  const a = judge([BLOB_CIRCLE], target, opts).iou;
-  const b = judge([BLOB_SQUARE], target, opts).iou;
-  return Math.round(Math.max(a, b) * 1000) / 1000;
+  const a = judge([BLOB_CIRCLE], target, { ...opts, baseline: false });
+  const b = judge([BLOB_SQUARE], target, { ...opts, baseline: false });
+  return {
+    overlap: Math.round(Math.max(a.iou, b.iou) * 1000) / 1000,
+    gap: Math.round(Math.min(a.gap, b.gap) * 10000) / 10000,
+  };
 }
 
 /** Pixel area and centroid of drawing rings in their own coordinates. */
@@ -182,17 +240,21 @@ function measureDrawing(rings, n) {
 
 /**
  * Score a drawing against a prepared target.
- * @returns {{accuracy:number, overlap:number, iou:number, baseline:number, empty:boolean,
+ * The drawing is placed by the best overlap (intersection over union), then
+ * scored by how closely its outline follows the real one (outlineGap),
+ * relative to what a featureless blob achieves on the same shape.
+ * @returns {{accuracy:number, overlap:number, iou:number, gap:number, baseline:number, empty:boolean,
  *            fit:{scale:number, tx:number, ty:number}|null, rings:number[][][]}}
  *   overlap:  raw intersection over union, rounded to 0.1 % (0..1)
- *   accuracy: shape accuracy beyond the blob baseline, rounded to 0.1 % (0..1)
+ *   gap:      average outline gap / equal-area radius (see outlineGap)
+ *   accuracy: 0..1, rounded to 0.1 %; a blob scores about 35 %
  *   fit: maps drawing coords → outline units (p*scale + t); invert it to draw
  *        the real outline over the sketch.
  */
 export function judge(strokes, target, opts = {}) {
   const o = { ...JUDGE_DEFAULTS, ...opts };
   const rings = cleanStrokes(strokes, o).filter((r) => r.length >= 3);
-  const empty = { accuracy: 0, overlap: 0, iou: 0, baseline: target.baseline, empty: true, fit: null, rings };
+  const empty = { accuracy: 0, overlap: 0, iou: 0, gap: Infinity, baseline: target.baseline, empty: true, fit: null, rings };
   if (!rings.length) return empty;
   const m = measureDrawing(rings, target.grid);
   if (!m) return empty;
@@ -236,10 +298,14 @@ export function judge(strokes, target, opts = {}) {
   }
 
   const iou = best.iou;
+  const f = best.fit;
+  const placed = work.map((r) => r.map(([x, y]) => [x * f.scale + f.tx, y * f.scale + f.ty]));
+  const gap = outlineGap(target, placed, o.samples);
   return {
-    accuracy: shapeAccuracy(iou, target.baseline),
+    accuracy: o.baseline === false ? 0 : accuracyFromGap(gap, target.blobGap),
     overlap: Math.round(iou * 1000) / 1000,
     iou,
+    gap,
     baseline: target.baseline,
     empty: false,
     fit: best.fit,
@@ -270,6 +336,18 @@ function tame(rings, gridScale, budget, size) {
 /** Map the real outline into drawing (canvas) coordinates using a judge fit. */
 export function outlineToCanvas(outline, fit) {
   return outline.map(([x, y]) => [(x - fit.tx) / fit.scale, (y - fit.ty) / fit.scale]);
+}
+
+/**
+ * Width / height of the drawing area for a place: its bounding box, clamped so
+ * thin places (Chile, Norway) get a tall canvas and wide ones (Russia) a wide
+ * one, without giving the exact proportions away.
+ */
+export function drawingAspect(outline, min = 0.55, max = 1.8) {
+  const b = bbox(outline);
+  const a = b.w / (b.h || 1);
+  const soft = Math.sqrt(a); // halfway to the true proportions
+  return Math.round(Math.min(max, Math.max(min, soft)) * 100) / 100;
 }
 
 /** Map a ring from outline units into a square canvas of `size` px with margin. */

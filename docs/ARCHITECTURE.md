@@ -150,16 +150,26 @@ It counts solo games only and skips practice games.
 
 ## Decisions that change or sharpen the brief
 
-1. **Shape accuracy, not raw IoU, drives the multiplier.** This was measured on
-   all 235 world outlines. A blind circle scores a median 63% raw IoU, and up to 88%
-   (Sierra Leone, Poland). A square scores 94% on New Mexico. On raw IoU with
-   the proposed anchors, "always draw a circle" would earn 100x on half the
-   world and break the 60% rule. So each outline gets a *blob baseline* (the
-   best IoU a circle or square reaches on it), and
-   `accuracy = (IoU − baseline) / (1 − baseline)`. A circle now scores 0%
-   everywhere, and a perfect copy scores 94% or more. The proposed anchors
-   (30/50/70/85% → 1/10/100/1000x) are kept and now apply to shape accuracy.
-   Raw overlap is still returned as `overlap` if the view wants to show it.
+1. **Accuracy comes from the outline gap, calibrated per place.** Raw overlap
+   (IoU) can't tell a recognisable drawing from a blob. A circle overlaps
+   France by 77%, about as much as a real player's careful drawing. The judge
+   still places the drawing by best overlap, then measures the *outline gap*:
+   the average distance between the drawn line and the real border, both
+   ways, divided by the place's equal-area radius. Each place also gets a
+   *blob gap*, the smallest gap a circle or square reaches on it (capped for
+   thin places). The formula is
+   `accuracy = 1 − (gap / blobGap) × 0.65`. On every shape:
+   - a blob scores about 35% (1x)
+   - a recognisable drawing scores 50–70% (10–100x)
+   - a near-perfect one scores 90% or more (1,000x)
+
+   The curve anchors are 35/50/70/90% → 1/10/100/1,000x.
+   `tests/fixtures/human-drawings.json` holds five drawings by a real
+   play-tester, traced from screenshots, and pins their ordering. Spain
+   (55%, 17x) and Germany (53%, 15x) beat a blob. France and Kenya (about
+   33%, 1x) were drawn as a rounded square and a blob. Half of Norway scores 0%.
+   The canvas also takes roughly the place's proportions (`drawingAspect`), so
+   tall places like Chile have room.
 
 2. **A wrong guess costs a point** (`rules.wrongGuessPenalty = 1`; the solved
    base never drops below 1). In the brief, a wrong guess and a timeout both
@@ -182,32 +192,16 @@ It counts solo games only and skips practice games.
 
 ## Tuning results so far
 
-Shape accuracy on the world pack, from `npm run tune`:
-
-| bot skill | median accuracy | median multiplier |
-|---|---|---|
-| 0.5 | 37% | 2.3x |
-| 0.7 | 59% | 27x |
-| 0.9 | 84% | 790x |
-
-With the bot's per-round skill roll, its round multipliers fall like this:
-
-| multiplier | share of rounds |
-|---|---|
-| 1x | 44% |
-| above 1x, under 10x | 25% |
-| 10x to under 100x | 19% |
-| 100x to under 1,000x | 9.9% |
-| 1,000x | 1.6% |
-
-From `npm run sim` (60 games of 10 rounds against one bot):
+From `npm run tune` and `npm run sim` (100 games of 10 rounds against one bot):
 
 | strategy | win rate |
 |---|---|
 | every blind strategy (random guesses, circle, square, scribble, never guessing) | 0% |
-| knows every place on clue 1, but draws a circle | 7% |
-| "decent player" (knows the place by clue 3, drawing skill 0.6) | 63% |
-| "strong player" (knows the place by clue 2, drawing skill 0.75) | 93% |
+| knows every place on clue 1, but draws a circle | 0% |
+| play-tester level (knows the place by clue 3, drawing skill 0.4) | 48% |
+| strong player (knows the place by clue 2, drawing skill 0.6) | 97% |
+
+The bot's drawing skill is set so that its typical drawing is about as good as the play-tester's.
 
 The real calibration of how human drawings map to the curve needs playtest
 drawings. Collect them with the optional game log, then re-run `tune-curve`.

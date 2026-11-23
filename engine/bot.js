@@ -31,7 +31,7 @@ export function rollKnowledge(rng) {
 
 /** Per-round drawing skill in [0, 1]. Shape tuned by tools/tune-curve.mjs. */
 export function rollSkill(rng) {
-  const s = 0.5 + 0.17 * rng.normal();
+  const s = 0.36 + 0.17 * rng.normal();
   return s < 0.02 ? 0.02 : s > 0.98 ? 0.98 : s;
 }
 

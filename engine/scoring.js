@@ -7,10 +7,10 @@
  */
 export const DEFAULT_CURVE = Object.freeze({
   anchors: Object.freeze([
-    Object.freeze([0.3, 1]),
+    Object.freeze([0.35, 1]),
     Object.freeze([0.5, 10]),
     Object.freeze([0.7, 100]),
-    Object.freeze([0.85, 1000]),
+    Object.freeze([0.9, 1000]),
   ]),
 });
 
@@ -22,16 +22,19 @@ export const DEFAULT_RULES = Object.freeze({
   curve: DEFAULT_CURVE,
 });
 
+/** Accuracy a featureless blob (circle or square) gets on any shape. */
+export const BLOB_ACCURACY = 0.35;
+
 /**
- * Shape accuracy: how much of the gap between a featureless blob and a perfect
- * drawing the player closed. `overlap` is the raw IoU; `baseline` is the best
- * IoU a circle or square reaches on this outline (see judge.blobBaseline).
- * 0 = no better than a blob, 1 = perfect. Rounded to 0.1 %.
+ * Accuracy from the outline gap (see judge.outlineGap), relative to the gap a
+ * featureless blob leaves on the same shape. Linear: a perfect outline is
+ * 100 %, a blob is 35 %, twice the blob's gap or worse bottoms out near 0.
+ * Per-shape calibration keeps round and thin places equally fair.
+ * Rounded to 0.1 %.
  */
-export function shapeAccuracy(overlap, baseline) {
-  if (!(overlap > 0)) return 0;
-  const b = Math.min(Math.max(baseline || 0, 0), 0.99);
-  const a = (overlap - b) / (1 - b);
+export function accuracyFromGap(gap, blobGap, blobAccuracy = BLOB_ACCURACY) {
+  if (!(gap >= 0) || !Number.isFinite(gap) || !(blobGap > 0)) return 0;
+  const a = 1 - (gap / blobGap) * (1 - blobAccuracy);
   const clamped = a < 0 ? 0 : a > 1 ? 1 : a;
   return Math.round(clamped * 1000) / 1000;
 }

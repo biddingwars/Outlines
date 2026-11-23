@@ -1,19 +1,22 @@
 // The view: renders state, runs the clocks, captures strokes, plays sounds.
 // No game rules live here; every decision goes through the engine.
 
-import { loadPack, PACKS } from '../packs/registry.js';
+import { loadPack, loadGlobe, PACKS } from '../packs/registry.js';
 import { createGame, step, activeTurn, activeSeat, revealedClues, results, botLine, isPractice } from '../engine/game.js';
 import { poolFor } from '../engine/pack.js';
 import { suggest } from '../engine/names.js';
-import { outlineToBox, outlineToCanvas } from '../engine/judge.js';
+import { outlineToCanvas, drawingAspect } from '../engine/judge.js';
+import { bbox } from '../engine/geometry.js';
 import { emptyRecord, sanitizeRecord, recordGame, recordDrawing } from '../engine/records.js';
 import { tr, UI_LANGS, LANG_NAMES } from './i18n.js';
 import { sfx, setSound, unlockAudio, haptic } from './audio.js';
+import { createGlobe } from './globe.js';
 
 const STORE = 'projectx.v1';
-const W = 1000; // drawings are stored in a 1000×1000 space
+const LONG = 1000; // strokes are stored with the canvas's longer side = 1000
+const FLAGS = { en: '🇬🇧', de: '🇩🇪', it: '🇮🇹', es: '🇪🇸', fr: '🇫🇷' };
 
-// ---------------------------------------------------------------- storage
+// ─────────────────────────────────────────── storage
 function load() {
   try {
     return JSON.parse(localStorage.getItem(STORE) || '{}');
@@ -36,6 +39,7 @@ const ui = {
     lang: UI_LANGS.includes(navLang) ? navLang : 'en',
     skin: 'nocturne',
     sound: true,
+    reduceMotion: false,
     packId: 'world',
     difficulty: 'beginner',
     rounds: 5,
@@ -50,6 +54,7 @@ const ui = {
   },
   record: sanitizeRecord(stored.record ?? emptyRecord()),
   pack: null,
+  globes: {},
   game: null,
   sheet: null,
   setupMode: 'solo',
@@ -68,7 +73,9 @@ const $app = document.getElementById('app');
 const L = () => ui.settings.lang;
 const t = (k, v) => tr(L(), k, v);
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
-const reduced = () => window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+const reduced = () => ui.settings.reduceMotion || window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+const fmtN = (n) => Number(n).toLocaleString(L());
+const fmtX = (m) => (m >= 1000 ? fmtN(m) : String(m).replace('.', L() === 'en' ? '.' : ','));
 
 function applySkin() {
   if (ui.settings.skin === 'daylight') document.documentElement.setAttribute('data-skin', 'daylight');
@@ -77,166 +84,170 @@ function applySkin() {
   setSound(ui.settings.sound);
 }
 
-const ICON = {
-  menu: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 7h16M4 12h16M4 17h10"/></svg>',
-  pause: '<svg viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="5" width="4" height="14" rx="1"/><rect x="14" y="5" width="4" height="14" rx="1"/></svg>',
-  note: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M9 18V6l10-2v12"/><circle cx="6.5" cy="18" r="2.5"/><circle cx="16.5" cy="16" r="2.5"/></svg>',
+const I = {
+  menu: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 7h16M4 12h16M4 17h12"/></svg>',
+  pause: '<svg viewBox="0 0 24 24" fill="currentColor"><rect x="6.5" y="5" width="3.6" height="14" rx="1.2"/><rect x="13.9" y="5" width="3.6" height="14" rx="1.2"/></svg>',
+  note: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18V6l10-2v12"/><circle cx="6.5" cy="18" r="2.5"/><circle cx="16.5" cy="16" r="2.5"/></svg>',
   mute: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M9 18V6l10-2v12"/><circle cx="6.5" cy="18" r="2.5"/><path d="M3 3l18 18"/></svg>',
-  gear: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M4.9 19.1L7 17M17 7l2.1-2.1"/></svg>',
-  person: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M4 21c1.5-4 4.5-6 8-6s6.5 2 8 6"/></svg>',
-  people: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="9" cy="8" r="3.5"/><circle cx="17" cy="9" r="2.5"/><path d="M2.5 20c1-3.5 3.5-5.5 6.5-5.5s5.5 2 6.5 5.5M15 14.5c2.5 0 4.5 1.5 5.5 4.5"/></svg>',
-  book: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 5c3-1 6-1 8 1v14c-2-2-5-2-8-1zM20 5c-3-1-6-1-8 1v14c2-2 5-2 8-1z"/></svg>',
+  half: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="8.5"/><path d="M12 3.5a8.5 8.5 0 0 1 0 17z" fill="currentColor"/></svg>',
+  gear: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="12" r="3.2"/><path d="M12 2.5v2.6M12 18.9v2.6M2.5 12h2.6M18.9 12h2.6M5.3 5.3l1.8 1.8M16.9 16.9l1.8 1.8M5.3 18.7l1.8-1.8M16.9 7.1l1.8-1.8"/></svg>',
+  lock: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="5" y="10.5" width="14" height="10" rx="2.5"/><path d="M8 10.5V8a4 4 0 0 1 8 0v2.5"/></svg>',
+  person: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="8" r="3.6"/><path d="M5 20c1.3-3.6 4-5.4 7-5.4s5.7 1.8 7 5.4"/></svg>',
+  people: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="9" cy="8.5" r="3.2"/><circle cx="16.5" cy="9.5" r="2.4"/><path d="M3 19.5c1-3.2 3.3-5 6-5s5 1.8 6 5M15 14.5c2.4 0 4.3 1.4 5.3 4"/></svg>',
+  book: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><path d="M3.5 5.5c3-1.2 6-1 8.5.8v13c-2.5-1.8-5.5-2-8.5-.8zM20.5 5.5c-3-1.2-6-1-8.5.8v13c2.5-1.8 5.5-2 8.5-.8z"/></svg>',
+  chev: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5l7 7-7 7"/></svg>',
+  check: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>',
+  undo: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 14L4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11"/></svg>',
+  trash: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16M9 7V4.5h6V7M6.5 7l1 13h9l1-13"/></svg>',
 };
 
-// ---------------------------------------------------------------- helpers
+// ─────────────────────────────────────────── helpers
 const itemOf = (id) => ui.pack.byId.get(id);
 const nameOf = (id) => itemOf(id).names[L()] ?? itemOf(id).names.en;
-const seatName = (i) => ui.game.config.seats[i].name;
+const seat = (i) => ui.game.config.seats[i];
 const initial = (s) => esc((s || '?').trim().charAt(0).toUpperCase());
-const avatar = (i, big = false) => `<span class="avatar seat-${ui.game.config.seats[i].color}"${big ? ' style="width:64px;height:64px;font-size:28px"' : ''}>${initial(seatName(i))}</span>`;
+const avatar = (i, cls = '') => `<span class="av seat-${seat(i).color} ${cls}">${initial(seat(i).name)}</span>`;
 const pathOf = (pts) => (pts.length ? `M${pts.map(([x, y]) => `${x.toFixed(1)},${y.toFixed(1)}`).join('L')}Z` : '');
+const packMeta = () => PACKS.find((p) => p.id === ui.settings.packId);
 
-function topBar({ mid = '', pause = true } = {}) {
-  return `<div class="bar">
-    <button class="pill" data-act="menu" aria-label="${t('menu')}">${ICON.menu}<span>${t('menu')}</span></button>
-    ${mid ? `<div class="mid">${mid}</div>` : '<span></span>'}
-    <div class="group">
-      ${pause ? `<button class="pill icon" data-act="menu" aria-label="${t('paused')}">${ICON.pause}</button>` : ''}
-      <button class="pill icon" data-act="sound" aria-label="${t('sound')}">${ui.settings.sound ? ICON.note : ICON.mute}</button>
-    </div>
-  </div>`;
+function bar({ mid = '', pause = false, home = false } = {}) {
+  const left = home
+    ? '<span></span>'
+    : `<button class="chipbtn" data-act="menu">${I.menu}<span>${t('menu')}</span></button>`;
+  const right = home
+    ? `<button class="chipbtn round" data-act="skin" aria-label="${t('appearance')}">${I.half}</button>`
+    : pause
+      ? `<button class="chipbtn round" data-act="menu" aria-label="${t('paused')}">${I.pause}</button>`
+      : '';
+  return `<div class="bar">${left}<div>${mid ? `<span class="lotpill">${mid}</span>` : ''}</div>
+    <div>${right}<button class="chipbtn round" data-act="sound" aria-label="${t('sound')}">${ui.settings.sound ? I.note : I.mute}</button></div></div>`;
 }
+const roundPill = () => t('round', { r: ui.game.round + 1, n: ui.game.config.rounds });
 
-// ---------------------------------------------------------------- render
+// ─────────────────────────────────────────── render
 function render() {
   applySkin();
+  destroyGlobes();
   const g = ui.game;
   let html;
   if (!g) html = renderHome();
-  else {
-    switch (g.phase) {
-      case 'handoff':
-        html = renderHandoff();
-        break;
-      case 'clue':
-        html = renderClue();
-        break;
-      case 'draw':
-        html = renderDraw();
-        break;
-      case 'reveal':
-        html = renderReveal();
-        break;
-      case 'roundEnd':
-        html = renderRoundEnd();
-        break;
-      default:
-        html = renderFinal();
-    }
-  }
-  $app.innerHTML = html + renderSheet();
+  else if (g.phase === 'handoff') html = renderHandoff();
+  else if (g.phase === 'clue') html = renderClue();
+  else if (g.phase === 'draw') html = renderDraw();
+  else if (g.phase === 'reveal') html = renderReveal();
+  else if (g.phase === 'roundEnd') html = renderRoundEnd();
+  else html = renderFinal();
+  $app.innerHTML = `<div class="frame">${html}</div>${renderSheet()}`;
   afterRender();
 }
 
 function renderHome() {
   const rec = ui.record.packs[ui.settings.packId];
   const games = rec ? rec.won + rec.lost + rec.tied : 0;
-  const mark = ui.pack ? outlineMark() : '';
-  return `<div class="bar"><span></span><span></span><div class="group">
-      <button class="pill icon" data-act="settings" aria-label="${t('settings')}">${ICON.gear}</button>
-      <button class="pill icon" data-act="sound" aria-label="${t('sound')}">${ui.settings.sound ? ICON.note : ICON.mute}</button>
-    </div></div>
-  <div class="main"><div class="home">
-    <div class="brand">
-      <div class="globe-mark">${mark}</div>
-      <h1>Project<span>X</span></h1>
-      <p>${t('tagline')}</p>
+  const rate = games ? Math.round((rec.won / games) * 100) : 0;
+  return `${bar({ home: true })}
+  <div class="stage">
+    <div class="col hero">
+      <div class="globe-wrap"><canvas id="homeglobe" aria-label="${t('theWorld')}"></canvas></div>
+      <h1 class="title">Project<span>X</span></h1>
+      <p class="tag">${t('tagline')}</p>
+      <button class="card record" data-act="record">
+        <span class="big num">${rec ? rec.won : 0}–${rec ? rec.lost : 0}</span>
+        <span><b>${t('record')}</b><small>${games ? `${t('games', { n: games })} · ${rate}% ${t('winRate').toLowerCase()}` : t('noGames')}</small></span>
+      </button>
     </div>
-    <div class="stack">
+    <div class="col">
       <div class="packs">${PACKS.map((p) => `<button class="pack" data-pack="${p.id}" aria-pressed="${p.id === ui.settings.packId}">
-          <b>${esc(p.title[L()])}</b><small>${p.mark} ${esc(p.blurb[L()])}</small></button>`).join('')}</div>
-      <button class="mode" data-act="setup-solo"><span class="dot">${ICON.person}</span><span><b>${t('solo')}</b><small>${t('soloSub')}</small></span></button>
-      <button class="mode" data-act="setup-hs"><span class="dot alt">${ICON.people}</span><span><b>${t('hotseat')}</b><small>${t('hotseatSub')}</small></span></button>
-      <div class="row">
-        <button class="btn" data-act="rules">${ICON.book}<span>${t('howToPlay')}</span></button>
-        <button class="btn" data-act="settings">${LANG_NAMES[L()]}</button>
+          <span class="flags">${p.id === 'world' ? '🇯🇵🇧🇷🇰🇪🇲🇽' : '🇺🇸'}</span><b>${esc(p.title[L()])}</b><small>${esc(p.blurb[L()])}</small></button>`).join('')}</div>
+      <button class="mode" data-act="setup-solo"><span class="ic">${I.person}</span><span class="tx"><b>${t('solo')}</b><small>${t('soloSub')}</small></span><span class="chev">${I.chev}</span></button>
+      <button class="mode" data-act="setup-hs"><span class="ic alt">${I.people}</span><span class="tx"><b>${t('hotseat')}</b><small>${t('hotseatSub')}</small></span><span class="chev">${I.chev}</span></button>
+      <div class="tools">
+        <button class="btn" data-act="rules">${I.book}<span>${t('howToPlay')}</span></button>
+        <button class="btn" data-act="language">${FLAGS[L()]}<span>${LANG_NAMES[L()]}</span></button>
+        <button class="chipbtn round" style="height:60px;width:60px" data-act="settings" aria-label="${t('settings')}">${I.gear}</button>
+        <button class="chipbtn round" style="height:60px;width:60px" data-act="privacy" aria-label="${t('privacy')}">${I.lock}</button>
       </div>
-      <div class="card recordline"><span class="big num">${rec ? `${rec.won}–${rec.lost}` : '0–0'}</span>
-        <span><b>${t('record')}</b><br><small class="muted">${games ? t('games', { n: games }) + (rec.streak ? ` · ${rec.streak > 0 ? '+' : ''}${rec.streak}` : '') : t('noGames')}</small></span></div>
       <div class="foot">${t('footer')}</div>
     </div>
-  </div></div>`;
-}
-
-function outlineMark() {
-  const ids = poolFor(ui.pack, 'beginner');
-  const id = ids[new Date().getDate() % ids.length];
-  const pts = outlineToBox(itemOf(id).outline, 200, 0.08);
-  return `<svg viewBox="0 0 200 200" width="100%" height="100%" role="img" aria-label="${esc(nameOf(id))}">
-    <path d="${pathOf(pts)}" pathLength="1" class="real ${reduced() ? '' : 'trace'}" style="stroke-width:2.5"></path></svg>`;
+  </div>`;
 }
 
 function renderHandoff() {
   const s = activeSeat(ui.game);
-  return `${topBar({ mid: t('round', { r: ui.game.round + 1, n: ui.game.config.rounds }), pause: false })}
-  <div class="center">
+  return `${bar({ mid: roundPill() })}
+  <div class="solo-center">
     <span class="eyebrow">${t('passTo')}</span>
-    <div style="display:flex;align-items:center;gap:14px">${avatar(s, true)}<h1>${esc(seatName(s))}</h1></div>
+    ${avatar(s, 'on').replace('class="av', 'style="width:110px;height:110px;font-size:44px" class="av')}
+    <h1>${esc(seat(s).name)}</h1>
     <p class="muted">${t('passNote')}</p>
-    <button class="btn gold" data-act="ready" style="min-width:220px">${t('ready')}</button>
+    <button class="btn gold" data-act="ready" style="min-width:280px">${t('ready')}</button>
   </div>`;
 }
 
-function rivalsHtml() {
+function seatsRow(phase) {
   const g = ui.game;
   const me = activeSeat(g);
   const turn = activeTurn(g);
   const elapsed = (ui.clock.total - ui.clock.left) * 1000;
-  return g.config.seats
+  return `<div class="seats">${g.config.seats
     .map((s, i) => {
-      if (i === me) return '';
-      let done;
-      const other = g.turns[g.round][i];
-      if (s.kind === 'bot') {
-        const last = other.bot.timeline.at(-1);
-        done = g.phase !== 'clue' || turn.clue > last.clue || (turn.clue === last.clue && elapsed >= last.atMs);
-      } else done = other.done;
-      return `<span class="chip">${avatar(i)}${esc(s.name)} · <span class="muted">${done ? t('finished') : t('thinking')}</span></span>`;
+      let st;
+      let tag = '';
+      if (i === me) {
+        tag = `<span class="tag2">${phase === 'draw' ? t('drawing') : t('guessing')}</span>`;
+        st = '&nbsp;';
+      } else if (s.kind === 'bot') {
+        const last = g.turns[g.round][i].bot.timeline.at(-1);
+        const done = phase !== 'clue' || turn.clue > last.clue || (turn.clue === last.clue && elapsed >= last.atMs);
+        st = done ? t('lockedIn') : `${t('thinking')}…`;
+      } else st = g.turns[g.round][i].done ? t('lockedIn') : t('waiting');
+      return `<div class="seat">${tag}${avatar(i, i === me ? 'on' : '')}<span class="who">${esc(s.name)}</span><span class="st" ${s.kind === 'bot' ? `data-botst="${i}"` : ''}>${st}</span></div>`;
     })
-    .join('');
+    .join('')}</div>`;
+}
+
+function ringSvg(id) {
+  return `<svg viewBox="0 0 200 200" aria-hidden="true"><defs><linearGradient id="goldgrad" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="var(--gold-1)"/><stop offset="1" stop-color="var(--gold-3)"/></linearGradient></defs>
+    <circle class="track" cx="100" cy="100" r="92"/><circle class="arc" id="${id}" cx="100" cy="100" r="92" pathLength="1" stroke-dasharray="1" stroke-dashoffset="0"/></svg>`;
 }
 
 function renderClue() {
   const g = ui.game;
   const turn = activeTurn(g);
   const clues = revealedClues(ui.pack, g, L());
-  const worth = Math.max(1, (g.config.rules.basePoints[turn.clue] ?? 1) - turn.guesses.filter((x) => !x.ok).length * g.config.rules.wrongGuessPenalty);
-  const slots = [];
-  for (let k = 0; k < 5; k++) {
-    if (k < clues.length) {
+  const wrong = turn.guesses.filter((x) => !x.ok).length;
+  const worth = Math.max(1, (g.config.rules.basePoints[turn.clue] ?? 1) - wrong * g.config.rules.wrongGuessPenalty);
+  const list = clues
+    .map((c, k) => {
       const cur = k === clues.length - 1;
-      slots.push(`<div class="clue ${cur ? 'current' : ''} ${cur && ui.freshClue ? 'new' : ''}">
-        <div class="k"><span>${t('clueN', { n: k + 1 })}</span><span>${t('worth', { p: g.config.rules.basePoints[k] })}</span></div>
-        <p>${esc(clues[k])}</p>${cur ? '<div class="timer" id="cluetimer"></div>' : ''}</div>`);
-    } else slots.push(`<div class="clue locked"><div class="k"><span>${t('clueN', { n: k + 1 })}</span><span>${t('worth', { p: g.config.rules.basePoints[k] })}</span></div></div>`);
-  }
+      return `<div class="cl ${cur ? 'cur' : ''} ${cur && ui.freshClue ? 'new' : ''}"><span class="n num">${k + 1}</span><p>${esc(c)}</p></div>`;
+    })
+    .join('');
+  const later = clues.length < 5 ? `<div class="cl later"><span class="n num">${clues.length + 1}</span><p>${t('clueN', { n: clues.length + 1 })} · ${t('worth', { p: g.config.rules.basePoints[clues.length] })}</p></div>` : '';
   ui.freshClue = false;
   const n = ui.notice;
-  return `${topBar({ mid: t('round', { r: g.round + 1, n: g.config.rounds }) })}
-  <div class="main">
-    <div class="clues">${slots.join('')}</div>
-    <div class="card guess">
-      <div class="worth"><span class="eyebrow">${esc(seatName(activeSeat(g)))}</span><span><span class="n num">${worth}</span> <span class="muted">${t('pts')}</span></span></div>
-      <form class="field" id="guessform" autocomplete="off">
-        <input id="guessinput" type="text" inputmode="text" autocapitalize="words" spellcheck="false" placeholder="${t('guessPh')}" value="${esc(ui.draft)}" aria-label="${t('guessPh')}">
-        <ul class="sugg" id="sugg"></ul>
-      </form>
-      <div class="notice ${n?.ok ? 'ok' : ''}" id="notice">${n ? esc(n.text) : ''}</div>
-      <div class="row">
-        <button class="btn ghost" data-act="skip">${t('nextClue')}</button>
-        <button class="btn gold" data-act="guess">${t('guess')}</button>
+  return `${bar({ mid: roundPill(), pause: true })}
+  <div class="stage">
+    <div class="col center">
+      <div class="place-head"><span class="badge">?</span><h1>${t('mystery')}</h1></div>
+      <div class="ringbox">${ringSvg('cluearc')}
+        <div class="disc"><div><div class="unit">${t('worth', { p: '' }).trim()}</div><div class="big num">${worth}</div><div class="unit">${worth === 1 ? t('point') : t('points')}</div></div></div>
+        <span class="clock num" id="clockpill">0:${String(g.config.clueSeconds).padStart(2, '0')}</span>
       </div>
-      <div class="rivals" id="rivals">${rivalsHtml()}</div>
+      <span class="pillnote"><span class="dot" style="background:${n ? 'var(--danger)' : 'var(--accent)'}"></span><span id="noticeline">${n ? esc(n.text) : t('clueOf', { n: clues.length })}</span></span>
+      <span class="quote">${t('costNote')}</span>
+    </div>
+    <div class="col">
+      ${seatsRow('clue')}
+      <div class="card panel">
+        <div class="clist">${list}${later}</div>
+        <form class="guessrow" id="guessform" autocomplete="off">
+          <ul class="sugg" id="sugg"></ul>
+          <input class="field" id="guessinput" type="text" autocapitalize="words" autocorrect="off" spellcheck="false" placeholder="${t('guessPh')}" value="${esc(ui.draft)}" aria-label="${t('guessPh')}">
+          <button type="submit" class="btn gold" style="min-width:150px">${t('guess')}</button>
+        </form>
+        <button class="btn wide quiet" data-act="skip">${t('nextClue')}</button>
+      </div>
     </div>
   </div>`;
 }
@@ -246,79 +257,84 @@ function renderDraw() {
   const turn = activeTurn(g);
   const item = itemOf(g.places[g.round]);
   const solved = turn.solvedAt !== null;
-  return `${topBar({ mid: t('round', { r: g.round + 1, n: g.config.rounds }) })}
-  <div class="main drawphase">
-    <div class="side">
-      <span class="eyebrow">${esc(seatName(activeSeat(g)))}</span>
-      <h2>${esc(t('draw', { p: nameOf(item.id) }))}</h2>
-      <span class="muted">${solved ? t('solvedOn', { n: turn.solvedAt + 1, b: turn.base }) : t('missedIt')}${item.mainlandOnly ? ` · ${t('mainland')}` : ''}</span>
-      <div class="tbar"><i id="drawtimer"></i></div>
-      <div class="row btns">
-        <button class="btn" data-act="undo">${t('undo')}</button>
-        <button class="btn" data-act="clear">${t('clear')}</button>
-      </div>
-      <button class="btn gold wide btns" data-act="submit">${t('done')}</button>
+  return `${bar({ mid: roundPill(), pause: true })}
+  <div class="drawstage">
+    <div class="drawside top">
+      <span class="eyebrow">${t('drawEyebrow')}</span>
+      <h1>${esc(nameOf(item.id))}</h1>
+      <div class="hint"><span>▲ ${t('northUp')}</span>${item.mainlandOnly ? `<span>${t('mainland')}</span>` : ''}<span>${solved ? t('solvedOn', { n: turn.solvedAt + 1, b: turn.base }) : t('missedIt')}</span></div>
+      <div class="tbar"><i id="drawbar"></i></div>
     </div>
-    <div class="drawwrap" id="drawwrap"><div class="canvasbox" id="canvasbox"><canvas id="cv"></canvas><span class="north">▲ ${t('northUp')}</span></div></div>
+    <div class="drawarea" id="drawarea"><div class="canvasbox" id="canvasbox"><canvas id="cv"></canvas><span class="north">▲ N</span><span class="empty" id="emptyhint">${t('drawHere')}</span></div></div>
+    <div class="drawside bottom">
+      <div class="tools2"><button class="btn" data-act="undo">${I.undo}<span>${t('undo')}</span></button><button class="btn" data-act="clear">${I.trash}<span>${t('clear')}</span></button></div>
+      <button class="btn gold wide" data-act="submit">${t('done')}</button>
+    </div>
   </div>`;
 }
 
-function revealSvg(turn, itemId, { animate = true } = {}) {
+function tierOf(m) {
+  if (m >= 1000) return t('tierMaster');
+  if (m >= 100) return t('tierGreat');
+  if (m >= 10) return t('tierGood');
+  if (m > 1) return t('tierFair');
+  return t('tierBlob');
+}
+
+function overlaySvg(turn, itemId, animate) {
   const item = itemOf(itemId);
-  const real = turn.fit ? outlineToCanvas(item.outline, turn.fit) : outlineToBox(item.outline, W, 0.15);
-  const mine = (turn.rings || []).map((r) => `<path class="mine" d="${pathOf(r)}"></path>`).join('');
-  // Fit the view to both shapes with a margin.
-  const all = real.concat(...(turn.rings || []));
-  let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
-  for (const [x, y] of all) {
-    x0 = Math.min(x0, x); y0 = Math.min(y0, y); x1 = Math.max(x1, x); y1 = Math.max(y1, y);
+  const rings = turn.rings || [];
+  let real;
+  if (turn.fit) real = outlineToCanvas(item.outline, turn.fit);
+  else {
+    const b = bbox(item.outline);
+    const s = (LONG * 0.8) / Math.max(b.w, b.h);
+    real = item.outline.map(([x, y]) => [(x - b.minX) * s + LONG * 0.1, (y - b.minY) * s + LONG * 0.1]);
   }
-  const side = Math.max(x1 - x0, y1 - y0) * 1.12 || W;
-  const cx = (x0 + x1) / 2, cy = (y0 + y1) / 2;
+  const all = real.concat(...rings);
+  const bb = bbox(all);
+  const side = Math.max(bb.w, bb.h) * 1.08 || LONG;
+  const cx = bb.minX + bb.w / 2;
+  const cy = bb.minY + bb.h / 2;
   const vb = `${(cx - side / 2).toFixed(1)} ${(cy - side / 2).toFixed(1)} ${side.toFixed(1)} ${side.toFixed(1)}`;
-  return `<svg class="revealsvg" viewBox="${vb}" preserveAspectRatio="xMidYMid meet" role="img" aria-label="${esc(nameOf(itemId))}">
-    ${mine}<path class="real ${animate && !reduced() ? 'trace' : ''}" pathLength="1" d="${pathOf(real)}"></path></svg>`;
+  return `<svg viewBox="${vb}" preserveAspectRatio="xMidYMid meet" role="img" aria-label="${esc(nameOf(itemId))}">
+    ${rings.map((r) => `<path class="mine" d="${pathOf(r)}"></path>`).join('')}
+    <path class="real ${animate && !reduced() ? 'trace' : ''}" pathLength="1" d="${pathOf(real)}"></path></svg>`;
 }
 
 function renderReveal() {
   const g = ui.game;
   const turn = activeTurn(g);
   const id = g.places[g.round];
-  const r = ui.reveal;
-  const showAll = r?.done;
+  const done = ui.reveal?.done;
   const weak = turn.multiplier < 3;
-  return `${topBar({ mid: t('round', { r: g.round + 1, n: g.config.rounds }), pause: false })}
-  <div class="main" data-act="skipreveal">
-    <div class="drawwrap"><div class="canvasbox revealbox" id="revealbox">${revealSvg(turn, id, { animate: !showAll })}${showAll && turn.multiplier >= 100 && r.burst ? '<div class="burst"></div>' : ''}</div></div>
-    <div class="side stat">
-      <span class="eyebrow">${esc(nameOf(id))}</span>
-      <div><span class="eyebrow">${t('accuracy')}</span><div class="big num" id="acc">${showAll ? Math.round(turn.accuracy * 100) : 0}%</div></div>
-      <div style="min-height:80px">${showAll ? `<span class="stamp num on ${weak ? 'weak' : ''}">${fmtMult(turn.multiplier)}×</span>` : ''}</div>
-      <div><span class="eyebrow">${t('roundScore')}</span><div class="num" style="font-size:28px;font-weight:700">${showAll ? `${turn.base} × ${fmtMult(turn.multiplier)} = <span style="color:var(--accent)">${turn.score.toLocaleString(L())}</span>` : '…'}</div></div>
-      <span class="muted" style="font-size:13px">${showAll ? '' : t('tapSkip')}</span>
-      <button class="btn gold wide" data-act="continue" ${showAll ? '' : 'disabled'}>${t('continue')}</button>
-    </div>
+  return `${bar({ mid: roundPill() })}
+  <div class="moment" data-act="skipreveal">
+    ${done ? `<div class="rays ${weak ? 'dim' : ''}"></div>` : ''}
+    <div class="overlay">${overlaySvg(turn, id, !done)}</div>
+    <div style="min-height:118px;display:grid;place-items:center">${done ? `<div class="plaque on ${weak ? 'weak' : ''}"><span class="x">${fmtX(turn.multiplier)}×</span><span class="lbl">${tierOf(turn.multiplier)}</span></div>` : ''}</div>
+    <div class="momentline">${esc(nameOf(id))} · <span class="num accbig" id="acc">${done ? Math.round(turn.accuracy * 100) : 0}%</span></div>
+    <span class="goldpill num" style="visibility:${done ? 'visible' : 'hidden'}">${turn.base} ${turn.base === 1 ? t('point') : t('points')} × ${fmtX(turn.multiplier)} = ${fmtN(turn.score)}</span>
+    <button class="btn gold" data-act="continue" style="min-width:300px;visibility:${done ? 'visible' : 'hidden'}">${t('continue')}</button>
   </div>`;
 }
-
-const fmtMult = (m) => (m >= 1000 ? m.toLocaleString('en').replace(/,/g, ' ') : String(m));
 
 function renderRoundEnd() {
   const g = ui.game;
   const id = g.places[g.round];
   const item = itemOf(id);
-  const lines = g.config.seats
-    .map((s, i) => (s.kind === 'bot' ? `<div class="chip" style="align-self:center">${avatar(i)}<span class="botline">“${esc(botLine(ui.pack, g, g.round, i, 0, L()))}”</span></div>` : ''))
+  const bots = g.config.seats
+    .map((s, i) => (s.kind === 'bot' ? `<div class="pillnote">${avatar(i, 'sm')}<span class="quote" style="min-height:0">“${esc(botLine(ui.pack, g, g.round, i, 0, L()))}”</span></div>` : ''))
     .join('');
   const last = g.round + 1 >= g.config.rounds;
-  return `${topBar({ mid: t('round', { r: g.round + 1, n: g.config.rounds }), pause: false })}
-  <div class="center">
+  return `${bar({ mid: roundPill() })}
+  <div class="solo-center">
     <span class="eyebrow">${t('itWas')}</span>
     <h1>${esc(nameOf(id))}</h1>
-    <div class="card fact"><span class="eyebrow">${t('didYouKnow')}</span><p>${esc(item.fact[L()] ?? item.fact.en)}</p></div>
-    ${lines}
-    <p class="muted" style="font-size:14px">${t('scoresHidden')}</p>
-    <button class="btn gold" data-act="continue" style="min-width:240px">${last ? t('seeResults') : t('nextRound')}</button>
+    <div class="card factcard"><span class="eyebrow">${t('didYouKnow')}</span><p>${esc(item.fact[L()] ?? item.fact.en)}</p></div>
+    ${bots}
+    <span class="muted">${t('scoresHidden')}</span>
+    <button class="btn gold" data-act="continue" style="min-width:300px">${last ? t('seeResults') : t('nextRound')}</button>
   </div>`;
 }
 
@@ -328,107 +344,157 @@ function renderFinal() {
   const n = g.config.rounds;
   const open = ui.barsOpen;
   const all = open >= n;
+  let verdict;
+  if (all) {
+    const w = res.winners;
+    const top = res.seats.find((s) => s.seat === w[0]);
+    const others = res.seats.filter((s) => s.seat !== w[0]).map((s) => `<b>${esc(s.name)}</b> ${fmtN(s.total)}`).join(' · ');
+    verdict = `<div class="card verdict">${w.length > 1 ? `<h1>${t('tie')}</h1>` : `<span style="font-size:30px">${top.kind === 'bot' ? '🤖' : '🏆'}</span><h1>${esc(t('takesIt', { n: top.name }))}</h1>`}
+      <div><span class="pts num">${fmtN(top.total)}</span> <span class="muted" style="font-weight:600">${t('pointsCap')}</span></div>
+      <span class="muted">${others}</span>
+      <span class="muted">${res.seats.map((s) => `${esc(s.name)} ${Math.round(s.avgAccuracy * 100)}%`).join(' · ')} ${t('avgAcc')}</span></div>`;
+  } else {
+    verdict = `<div class="card verdict"><span class="sealed">🔒</span><h1>${t('sealed')}</h1><span class="muted">${t('sealedSub')}</span></div>`;
+  }
   const cols = `grid-template-columns:repeat(${n},1fr)`;
   const rows = res.seats
     .map(
-      (s) => `<div class="seatrow"><span class="name">${avatar(s.seat)}${esc(s.name)}</span>
-      <div class="cells" style="${cols}">${s.rounds.map((r, k) => `<div class="cell num ${k < open ? 'open' : ''} ${k < open && r.multiplier >= 100 ? 'hot' : ''}">${k < open ? r.score : ''}</div>`).join('')}</div>
-      <span class="totalcell num">${all ? s.total.toLocaleString(L()) : '—'}</span></div>`,
+      (s) => `<div class="srow"><span class="name">${avatar(s.seat, 'sm')}<span>${esc(s.name)}</span></span><span class="tot num">${all ? fmtN(s.total) : '—'}</span>
+      <div class="bars" style="${cols}">${s.rounds.map((r, k) => `<div class="barcell num ${k < open ? 'open' : ''} ${k < open && r.multiplier >= 100 ? 'hot' : ''}">${k < open ? fmtN(r.score) : ''}</div>`).join('')}</div></div>`,
     )
     .join('');
-  let verdict = '';
-  if (all) {
-    const w = res.winners;
-    verdict = `<h1>${w.length > 1 ? t('tie') : esc(t('wins', { n: seatName(w[0]) }))}</h1>
-      <span class="muted">${res.seats.map((s) => `${esc(s.name)} ${Math.round(s.avgAccuracy * 100)}%`).join(' · ')} ${t('avgAcc')}</span>`;
-  }
   const human = res.seats.find((s) => s.kind === 'human');
-  const places = res.places
-    .map((p) => {
-      const a = p.accuracy[human.seat] ?? 0;
-      return `<span class="place" style="background:color-mix(in srgb, var(--accent) ${Math.round(a * 70)}%, transparent)">${esc(nameOf(p.itemId))} ${all ? Math.round(a * 100) + '%' : ''}</span>`;
-    })
-    .join('');
+  const chips = res.places.map((p) => `<span class="chip"><i style="opacity:${0.25 + 0.75 * (p.accuracy[human.seat] ?? 0)}"></i>${esc(nameOf(p.itemId))}${all ? ` ${Math.round((p.accuracy[human.seat] ?? 0) * 100)}%` : ''}</span>`).join('');
   const best = res.best;
-  return `${topBar({ mid: t('finalScores'), pause: false })}
-  <div class="final">
-    <div class="card board">
-      <div class="verdict">${verdict}</div>
-      ${rows}
-      <div class="row" style="margin-top:6px">
-        ${all ? `<button class="btn" data-act="home">${t('menu')}</button><button class="btn gold" data-act="again">${t('playAgain')}</button>`
-          : `<button class="btn" data-act="openall">${t('revealAll')}</button><button class="btn gold" data-act="opennext">${t('revealNext', { r: open + 1 })}</button>`}
-      </div>
+  return `${bar({ mid: t('finalScores') })}
+  <div class="stage final">
+    <div class="col">
+      ${verdict}
+      <div class="card board">${rows}</div>
+      ${all ? '' : `<div class="finalbtns"><button class="btn" data-act="openall">${t('revealAll')}</button><button class="btn gold" data-act="opennext">${t('revealNext', { r: open + 1 })}</button></div>`}
     </div>
-    <div class="stack">
-      ${all && best ? `<div class="card" style="padding:14px"><span class="eyebrow">${t('best')} · ${esc(seatName(best.seat))} · ${esc(nameOf(best.itemId))} · ${Math.round(best.accuracy * 100)}%</span>
-        <div style="aspect-ratio:1;max-height:38vh;margin:8px auto 0">${revealSvg({ rings: best.rings, fit: best.fit }, best.itemId, { animate: false })}</div></div>` : ''}
-      <div class="card" style="padding:14px"><span class="eyebrow">${t('places')}</span><div class="places" style="margin-top:8px">${places}</div></div>
+    <div class="col">
+      <div class="card globecard">
+        <div class="gl"><canvas id="endglobe"></canvas></div>
+        <div><b style="font-size:20px">${all && best ? esc(t('bestBy', { n: seat(best.seat).name, p: nameOf(best.itemId), a: Math.round(best.accuracy * 100) })) : esc(packMeta().title[L()])}</b><div class="muted" style="font-size:14px">${t('dragSpin')}</div></div>
+        <div class="chips">${chips}</div>
+      </div>
+      ${all ? `<div class="finalbtns"><button class="btn" data-act="home">${t('menu')}</button><button class="btn gold" data-act="again">${t('playAgain')}</button></div>` : ''}
     </div>
   </div>`;
 }
 
-// ---------------------------------------------------------------- sheets
+// ─────────────────────────────────────────── sheets
+function sheet(body, foot) {
+  return `<div class="scrim" data-act="scrim"><div class="sheet" role="dialog" aria-modal="true"><div class="body">${body}</div>${foot ? `<div class="foot2">${foot}</div>` : ''}</div></div>`;
+}
+const done = () => `<button class="btn gold wide" data-act="closesheet">${t('done')}</button>`;
+const chipRow = (key, values, cur, fmt = (v) => v) => `<div class="chiprow fill">${values.map((v) => `<button class="opt num" data-set="${key}" data-v="${v}" aria-pressed="${v === cur}">${fmt(v)}</button>`).join('')}</div>`;
+const toggle = (key, on) => `<button class="toggle" data-toggle="${key}" aria-pressed="${on}" aria-label="${key}"></button>`;
+
 function renderSheet() {
   const sh = ui.sheet;
   if (!sh) return '';
-  let body = '';
   if (sh === 'rules') {
-    body = `<h2>${t('howToPlay')}</h2><ol>${t('rules').map((l) => `<li>${esc(l)}</li>`).join('')}</ol>
-      <button class="btn gold" data-act="closesheet">${t('close')}</button>`;
-  } else if (sh === 'settings' || sh === 'delete') {
-    body = `<h2>${t('settings')}</h2>
-      <div class="opt"><label>${t('language')}</label></div>
-      <div class="seg">${UI_LANGS.map((l) => `<button data-lang="${l}" aria-pressed="${l === L()}">${l.toUpperCase()}</button>`).join('')}</div>
-      <div class="opt"><label>${t('theme')}</label><div class="seg" style="min-width:220px">
-        <button data-skin="nocturne" aria-pressed="${ui.settings.skin !== 'daylight'}">${t('dark')}</button>
-        <button data-skin="daylight" aria-pressed="${ui.settings.skin === 'daylight'}">${t('light')}</button></div></div>
-      <div class="opt"><label>${t('sound')}</label><div class="seg" style="min-width:160px">
-        <button data-sound="1" aria-pressed="${ui.settings.sound}">${t('on')}</button>
-        <button data-sound="0" aria-pressed="${!ui.settings.sound}">${t('off')}</button></div></div>
-      ${sh === 'delete'
-        ? `<p>${t('deleteAsk')}</p><div class="row"><button class="btn" data-act="settings">${t('cancel')}</button><button class="btn danger" data-act="deleteyes">${t('deleteYes')}</button></div>`
-        : `<button class="btn danger" data-act="delete">${t('deleteData')}</button>`}
-      ${ui.deletedMsg ? `<p class="muted">${t('deleted')}</p>` : ''}
-      <button class="btn gold" data-act="closesheet">${t('close')}</button>`;
-  } else if (sh === 'pause') {
-    body = `<h2>${t('paused')}</h2>
-      <button class="btn gold" data-act="closesheet">${t('resume')}</button>
-      <div class="row"><button class="btn" data-act="rules">${t('howToPlay')}</button><button class="btn" data-act="settings">${t('settings')}</button></div>
-      <button class="btn danger" data-act="quit">${t('quit')}</button><small class="muted">${t('quitNote')}</small>`;
-  } else if (sh === 'setup') body = renderSetup();
-  return `<div class="scrim" data-act="scrim"><div class="sheet" role="dialog" aria-modal="true">${body}</div></div>`;
-}
-
-function stepper(key, v) {
-  return `<div class="stepper"><button data-step="${key}" data-d="-1" aria-label="−">−</button><span class="v num">${v}</span><button data-step="${key}" data-d="1" aria-label="+">+</button></div>`;
+    return sheet(`<h2>${t('howToPlay')}</h2><ol>${t('rules').map((l) => `<li>${esc(l)}</li>`).join('')}</ol>`, done());
+  }
+  if (sh === 'language') {
+    return sheet(`<h2>${t('language')}</h2><div class="group">${UI_LANGS.map((l) => `<button class="row2" data-lang="${l}"><span>${FLAGS[l]} &nbsp;${LANG_NAMES[l]}</span>${l === L() ? `<span style="color:var(--accent)">${I.check.replace('<svg', '<svg width="20" height="20"')}</span>` : ''}</button>`).join('')}</div>`, done());
+  }
+  if (sh === 'settings') {
+    const s = ui.settings;
+    return sheet(
+      `<h2>${t('settings')}</h2>
+      <span class="lbl2">${t('appearance')}</span>
+      <div class="chiprow fill"><button class="opt" data-skin="nocturne" aria-pressed="${s.skin !== 'daylight'}">${t('dark')}</button><button class="opt" data-skin="daylight" aria-pressed="${s.skin === 'daylight'}">${t('light')}</button></div>
+      <span class="lbl2">${t('language')}</span>
+      <div class="group"><button class="row2" data-act="language"><span>${FLAGS[L()]} &nbsp;${LANG_NAMES[L()]}</span>${I.chev.replace('<svg', '<svg width="16" height="16"')}</button></div>
+      <div class="group">
+        <div class="row2"><span>${t('sound')}</span>${toggle('sound', s.sound)}</div>
+        <div class="row2"><span>${t('reduceMotion')}<small>${t('reduceMotionSub')}</small></span>${toggle('reduceMotion', s.reduceMotion)}</div>
+        <div class="row2"><span>${t('faint')}<small>${t('faintSub')}</small></span>${toggle('practice', s.practice)}</div>
+      </div>`,
+      done(),
+    );
+  }
+  if (sh === 'privacy' || sh === 'delete') {
+    return sheet(
+      `<h2>${t('privacy')}</h2>${t('privacyText').map((p) => `<p>${esc(p)}</p>`).join('')}<p class="muted" style="font-size:14px">${t('credits')}</p>
+      ${sh === 'delete' ? `<p><b>${t('deleteAsk')}</b></p><div class="chiprow fill"><button class="btn" data-act="privacy">${t('cancel')}</button><button class="btn danger" data-act="deleteyes">${t('deleteYes')}</button></div>` : ''}`,
+      `${sh === 'privacy' ? `<button class="btn text" data-act="delete">${t('deleteData')}</button>` : ''}${done()}`,
+    );
+  }
+  if (sh === 'record') {
+    const r = ui.record.packs[ui.settings.packId] ?? { won: 0, lost: 0, tied: 0, streak: 0 };
+    const games = r.won + r.lost + r.tied;
+    const best = Object.keys(ui.record.best).filter((k) => k.startsWith(`${ui.settings.packId}:`)).length;
+    return sheet(
+      `<h2>${t('record')}</h2><span class="lbl2">${esc(packMeta().title[L()])}</span>
+      <div class="stats3"><div><b class="g">${r.won}</b><span class="eyebrow">${t('wins')}</span></div><div><b>${r.lost}</b><span class="eyebrow">${t('losses')}</span></div><div><b>${r.tied}</b><span class="eyebrow">${t('ties')}</span></div></div>
+      <div class="group"><div class="row2"><span>${t('games', { n: '' }).trim()}</span><b class="num">${games}</b></div><div class="row2"><span>${t('winRate')}</span><b class="num">${games ? Math.round((r.won / games) * 100) : 0}%</b></div><div class="row2"><span>${t('streak')}</span><b class="num">${r.streak > 0 ? '+' : ''}${r.streak}</b></div><div class="row2"><span>${t('bestSaved')}</span><b class="num">${best}</b></div></div>
+      <p class="muted" style="font-size:14px">${t('soloOnly')}</p>`,
+      `<button class="btn text" data-act="resetrecord">${t('resetRecord')}</button>${done()}`,
+    );
+  }
+  if (sh === 'pause') {
+    return sheet(
+      `<h2>${t('paused')}</h2><div class="chiprow fill"><button class="btn" data-act="rules">${t('howToPlay')}</button><button class="btn" data-act="settings">${t('settings')}</button></div>
+       <button class="btn danger wide" data-act="quit">${t('quit')}</button><p class="muted" style="font-size:14px;text-align:center">${t('quitNote')}</p>`,
+      `<button class="btn gold wide" data-act="closesheet">${t('resume')}</button>`,
+    );
+  }
+  if (sh === 'setup') return renderSetup();
+  return '';
 }
 
 function renderSetup() {
   const s = ui.settings;
   const solo = ui.setupMode === 'solo';
-  const diffs = ui.pack ? Object.entries(ui.pack.difficulties) : [];
-  const poolN = ui.pack ? poolFor(ui.pack, s.difficulty).length : 30;
-  s.rounds = Math.min(Math.max(5, s.rounds), Math.min(30, poolN));
+  const diffs = Object.entries(ui.pack.difficulties);
+  const poolN = poolFor(ui.pack, s.difficulty).length;
+  const roundOpts = [5, 10, 15, 20, 30].filter((r) => r <= poolN);
+  if (!roundOpts.includes(s.rounds)) s.rounds = roundOpts.at(-1) ?? Math.max(5, poolN);
   const names = solo
-    ? `<div class="opt"><label for="name0">${t('yourName')}</label></div><div class="names" style="grid-template-columns:1fr"><input id="name0" data-name="0" maxlength="16" value="${esc(s.names[0])}" placeholder="${t('playerN', { n: 1 })}"></div>`
-    : `<div class="names">${Array.from({ length: s.players }, (_, i) => `<input id="name${i}" data-name="${i}" maxlength="16" value="${esc(s.names[i])}" placeholder="${t('playerN', { n: i + 1 })}" aria-label="${t('playerN', { n: i + 1 })}">`).join('')}</div>`;
-  return `<h2>${solo ? t('solo') : t('hotseat')} · ${ui.pack ? esc(ui.pack.title[L()]) : ''}</h2>
-    <div class="seg">${diffs.map(([k, d]) => `<button data-diff="${k}" aria-pressed="${k === s.difficulty}">${esc(d.label[L()])}</button>`).join('')}</div>
-    ${solo ? '' : `<div class="opt"><label>${t('players')}</label>${stepper('players', s.players)}</div>`}
-    ${names}
-    <div class="opt"><label>${t('bots')}</label>${stepper(solo ? 'bots' : 'hsBots', solo ? s.bots : s.hsBots)}</div>
-    <div class="opt"><label>${t('rounds')}</label>${stepper('rounds', s.rounds)}</div>
-    <div class="opt"><label>${t('clueTime')}</label>${stepper('clueSeconds', s.clueSeconds)}</div>
-    <div class="opt"><label>${t('drawTime')}</label>${stepper('drawSeconds', s.drawSeconds)}</div>
-    <label class="check"><input type="checkbox" id="practice" ${s.practice ? 'checked' : ''}> <span>${t('practice')}</span></label>
-    ${s.practice ? `<small class="muted">${t('practiceNote')}</small>` : ''}
-    <div class="row"><button class="btn" data-act="closesheet">${t('cancel')}</button><button class="btn gold" data-act="start">${t('start')}</button></div>`;
+    ? `<input class="input" id="name0" data-name="0" maxlength="16" value="${esc(s.names[0])}" placeholder="${t('playerN', { n: 1 })}" aria-label="${t('nickname')}">`
+    : Array.from({ length: s.players }, (_, i) => `<input class="input" id="name${i}" data-name="${i}" maxlength="16" value="${esc(s.names[i])}" placeholder="${t('playerN', { n: i + 1 })}" aria-label="${t('playerN', { n: i + 1 })}">`).join('');
+  return sheet(
+    `<h2>${solo ? t('solo') : t('hotseat')}</h2><p>${solo ? t('setupSolo') : t('setupHs')}</p>
+    ${solo ? '' : `<div class="optrow"><span class="lbl2">${t('people')}</span>${chipRow('players', [2, 3, 4], s.players)}</div>`}
+    <div class="optrow"><span class="lbl2">${t('bots')}</span>${solo ? chipRow('bots', [1, 2, 3], s.bots) : chipRow('hsBots', [0, 1, 2].filter((b) => b + s.players <= 4), s.hsBots)}</div>
+    <span class="lbl2">${t('rounds2')}</span>${chipRow('rounds', roundOpts.length ? roundOpts : [poolN], s.rounds)}
+    <p class="muted" style="font-size:15px">${t('roundsNote')}</p>
+    <span class="lbl2">${t('difficulty')}</span>
+    ${diffs.map(([k, d]) => `<button class="radio" data-diff="${k}" aria-pressed="${k === s.difficulty}"><span><b>${esc(d.label[L()])}</b><small>${t(`diffSub_${k}`)} · ${poolFor(ui.pack, k).length}</small></span><span class="o">${k === s.difficulty ? I.check : ''}</span></button>`).join('')}
+    <span class="lbl2">${t('clueTime')}</span>${chipRow('clueSeconds', [10, 15, 20, 30], s.clueSeconds)}
+    <span class="lbl2">${t('drawTime')}</span>${chipRow('drawSeconds', [15, 20, 30, 45], s.drawSeconds)}
+    <span class="lbl2">${solo ? t('nickname') : t('nicknames')}</span>${names}
+    ${s.practice ? `<p class="muted" style="font-size:14px">${t('practiceNote')}</p>` : ''}`,
+    `<button class="btn gold wide" data-act="start">${t('startGame')}</button><button class="btn text" data-act="closesheet">${t('back')}</button>`,
+  );
 }
 
-const LIMITS = { bots: [1, 3, 1], hsBots: [0, 2, 1], players: [2, 4, 1], rounds: [5, 30, 1], clueSeconds: [5, 60, 5], drawSeconds: [5, 90, 5] };
+// ─────────────────────────────────────────── globes
+function destroyGlobes() {
+  for (const g of Object.values(ui.globes)) g.destroy();
+  ui.globes = {};
+}
 
-// ---------------------------------------------------------------- actions
+async function globeLayers(packId) {
+  const world = await loadGlobe('world');
+  if (packId === 'world') return [{ items: world.items, base: 'land' }];
+  const sub = await loadGlobe(packId);
+  return [{ items: world.items, base: 'land' }, { items: sub.items, base: 'sub' }];
+}
+
+async function mountGlobe(id, packId, opts) {
+  const cv = document.getElementById(id);
+  if (!cv) return;
+  const layers = await globeLayers(packId);
+  if (!cv.isConnected) return;
+  ui.globes[id] = createGlobe(cv, { layers, focus: PACKS.find((p) => p.id === packId).focus, ...opts });
+}
+
+// ─────────────────────────────────────────── actions
 function startGame() {
   const s = ui.settings;
   const solo = ui.setupMode === 'solo';
@@ -450,9 +516,11 @@ function startGame() {
   ui.sheet = null;
   ui.barsOpen = 0;
   ui.recorded = false;
+  ui.freshClue = true;
   resetPhase();
   save();
   render();
+  if (ui.game.phase === 'clue') sfx.clue();
 }
 
 function resetPhase() {
@@ -486,11 +554,7 @@ function dispatch(action) {
   if (!g.notice) ui.draft = '';
   ui.sugg = [];
   ui.sel = -1;
-  if (g.phase === 'clue' && turn && turnBefore && turn.clue !== turnBefore.clue) {
-    ui.freshClue = true;
-    sfx.clue();
-  }
-  if (g.phase === 'clue' && phaseBefore === 'handoff') {
+  if (g.phase === 'clue' && ((turn && turnBefore && turn.clue !== turnBefore.clue) || phaseBefore !== 'clue')) {
     ui.freshClue = true;
     sfx.clue();
   }
@@ -507,25 +571,24 @@ function finishGame() {
   if (ui.recorded) return;
   ui.recorded = true;
   const res = results(ui.pack, ui.game);
-  if (!isPractice(ui.game.config)) {
-    ui.record = recordGame(ui.record, res, { packId: ui.pack.id });
-    const at = new Date().toISOString().slice(0, 10);
-    ui.game.turns.forEach((round, k) =>
-      round.forEach((turn) => {
-        if (ui.game.config.seats[turn.seat].kind !== 'human') return;
-        ui.record = recordDrawing(ui.record, { packId: ui.pack.id, itemId: ui.game.places[k], accuracy: turn.accuracy, rings: turn.rings, name: seatName(turn.seat), at });
-      }),
-    );
-    save();
-  }
+  if (isPractice(ui.game.config)) return;
+  ui.record = recordGame(ui.record, res, { packId: ui.pack.id });
+  const at = new Date().toISOString().slice(0, 10);
+  ui.game.turns.forEach((round, k) =>
+    round.forEach((turn) => {
+      if (seat(turn.seat).kind !== 'human') return;
+      ui.record = recordDrawing(ui.record, { packId: ui.pack.id, itemId: ui.game.places[k], accuracy: turn.accuracy, rings: turn.rings, name: seat(turn.seat).name, at });
+    }),
+  );
+  save();
 }
 
 function startReveal() {
   const turn = activeTurn(ui.game);
-  ui.reveal = { done: false, burst: true };
+  ui.reveal = { done: false };
   if (reduced()) {
     ui.reveal.done = true;
-    setTimeout(() => sfx.stamp(turn.multiplier), 50);
+    setTimeout(() => sfx.stamp(turn.multiplier), 60);
     return;
   }
   sfx.trace();
@@ -533,7 +596,7 @@ function startReveal() {
   const target = Math.round(turn.accuracy * 100);
   const tick = (now) => {
     if (!ui.reveal || ui.reveal.done || ui.game.phase !== 'reveal') return;
-    const k = Math.min(1, Math.max(0, (now - t0 - 700) / 700));
+    const k = Math.min(1, Math.max(0, (now - t0 - 600) / 800));
     const el = document.getElementById('acc');
     if (el) el.textContent = `${Math.round(target * (1 - (1 - k) ** 3))}%`;
     if (now - t0 >= 1500) return finishReveal();
@@ -549,37 +612,44 @@ function finishReveal() {
   sfx.stamp(turn.multiplier);
   haptic(turn.multiplier >= 100 ? 40 : 15);
   render();
-  if (turn.multiplier >= 100) confetti(turn.multiplier >= 1000 ? 120 : 60);
+  if (turn.multiplier >= 100) confetti(turn.multiplier >= 1000 ? 140 : 70);
 }
 
 function confetti(n) {
   if (reduced()) return;
   const box = document.createElement('div');
   box.className = 'confetti';
-  const colors = ['var(--accent)', 'var(--fg)', 'var(--seat-red)', 'var(--seat-blue)', 'var(--seat-green)'];
+  const colors = ['var(--gold-1)', 'var(--gold-2)', 'var(--fg)', 'var(--seat-red)', 'var(--seat-blue)', 'var(--seat-green)'];
   for (let i = 0; i < n; i++) {
     const p = document.createElement('i');
-    const x = Math.random() * 100;
-    p.style.cssText = `position:absolute;left:${x}%;top:-20px;width:8px;height:14px;border-radius:2px;background:${colors[i % colors.length]}`;
+    p.style.cssText = `position:absolute;left:${Math.random() * 100}%;top:-20px;width:${6 + Math.random() * 5}px;height:${10 + Math.random() * 8}px;border-radius:2px;background:${colors[i % colors.length]}`;
     box.appendChild(p);
     p.animate(
       [
-        { transform: `translate(0,0) rotate(0deg)`, opacity: 1 },
-        { transform: `translate(${(Math.random() - 0.5) * 200}px, ${window.innerHeight + 40}px) rotate(${Math.random() * 720}deg)`, opacity: 0.9 },
+        { transform: 'translate(0,0) rotate(0deg)', opacity: 1 },
+        { transform: `translate(${(Math.random() - 0.5) * 240}px, ${window.innerHeight + 40}px) rotate(${Math.random() * 900}deg)`, opacity: 0.9 },
       ],
-      { duration: 1800 + Math.random() * 1400, delay: Math.random() * 400, easing: 'cubic-bezier(.2,.6,.4,1)', fill: 'forwards' },
+      { duration: 2000 + Math.random() * 1500, delay: Math.random() * 400, easing: 'cubic-bezier(.2,.6,.4,1)', fill: 'forwards' },
     );
   }
   document.body.appendChild(box);
-  setTimeout(() => box.remove(), 3800);
+  setTimeout(() => box.remove(), 4200);
 }
 
-// ---------------------------------------------------------------- clock
+function toast(text) {
+  document.querySelector('.toast')?.remove();
+  const el = document.createElement('div');
+  el.className = 'toast';
+  el.textContent = text;
+  document.body.appendChild(el);
+  setTimeout(() => el.remove(), 1600);
+}
+
+// ─────────────────────────────────────────── clock
 function phaseKey() {
   const g = ui.game;
   if (!g || (g.phase !== 'clue' && g.phase !== 'draw')) return null;
-  const turn = activeTurn(g);
-  return `${g.round}:${activeSeat(g)}:${g.phase}:${turn.clue}`;
+  return `${g.round}:${activeSeat(g)}:${g.phase}:${activeTurn(g).clue}`;
 }
 
 function clockLoop(prev) {
@@ -596,18 +666,32 @@ function clockLoop(prev) {
     }
   } else if (key && !ui.sheet && !document.hidden) {
     c.left -= dt;
-    const sec = Math.ceil(c.left);
+    const sec = Math.max(0, Math.ceil(c.left));
+    const frac = Math.max(0, c.left / c.total);
     if (sec !== c.lastSec) {
       c.lastSec = sec;
       if (sec <= 5 && sec > 0) sfx.tick();
-      const r = document.getElementById('rivals');
-      if (r && ui.game.phase === 'clue') r.innerHTML = rivalsHtml();
+      const pill = document.getElementById('clockpill');
+      if (pill) pill.textContent = `0:${String(sec).padStart(2, '0')}`;
+      if (ui.game.phase === 'clue') {
+        const turn = activeTurn(ui.game);
+        const elapsed = (c.total - c.left) * 1000;
+        document.querySelectorAll('[data-botst]').forEach((el) => {
+          const last = ui.game.turns[ui.game.round][+el.dataset.botst].bot.timeline.at(-1);
+          const isDone = turn.clue > last.clue || (turn.clue === last.clue && elapsed >= last.atMs);
+          el.textContent = isDone ? t('lockedIn') : `${t('thinking')}…`;
+        });
+      }
     }
-    const frac = Math.max(0, c.left / c.total);
-    const bar = document.getElementById(ui.game.phase === 'clue' ? 'cluetimer' : 'drawtimer');
-    if (bar) {
-      bar.style.width = `${frac * 100}%`;
-      bar.classList.toggle('low', c.left <= 5);
+    const arc = document.getElementById('cluearc');
+    if (arc) {
+      arc.setAttribute('stroke-dashoffset', String(1 - frac));
+      arc.classList.toggle('low', c.left <= 5);
+    }
+    const db = document.getElementById('drawbar');
+    if (db) {
+      db.style.transform = `scaleX(${frac})`;
+      db.classList.toggle('low', c.left <= 5);
     }
     if (c.left <= 0) {
       c.key = null;
@@ -618,36 +702,50 @@ function clockLoop(prev) {
   requestAnimationFrame(() => clockLoop(now));
 }
 
-// ---------------------------------------------------------------- drawing
+// ─────────────────────────────────────────── drawing
 let cv;
 let cctx;
-let cSize = 0;
+let cw = 0;
+let ch = 0;
 let drawing = null;
 
 function sizeCanvas() {
-  const wrap = document.getElementById('drawwrap');
+  const area = document.getElementById('drawarea');
   cv = document.getElementById('cv');
-  if (!wrap || !cv) return;
-  const r = wrap.getBoundingClientRect();
-  cSize = Math.max(160, Math.floor(Math.min(r.width, r.height) - 4));
-  const dpr = window.devicePixelRatio || 1;
-  cv.width = cSize * dpr;
-  cv.height = cSize * dpr;
-  cv.style.width = cv.style.height = `${cSize}px`;
+  if (!area || !cv) return;
+  const r = area.getBoundingClientRect();
+  const aspect = drawingAspect(itemOf(ui.game.places[ui.game.round]).outline);
+  let w = r.width - 4;
+  let h = r.height - 4;
+  if (w / h > aspect) w = h * aspect;
+  else h = w / aspect;
+  cw = Math.max(120, Math.floor(w));
+  ch = Math.max(120, Math.floor(h));
+  const dpr = Math.min(3, window.devicePixelRatio || 1);
+  cv.width = cw * dpr;
+  cv.height = ch * dpr;
+  cv.style.width = `${cw}px`;
+  cv.style.height = `${ch}px`;
   cctx = cv.getContext('2d');
   cctx.setTransform(dpr, 0, 0, dpr, 0, 0);
   paint();
 }
 
+const unit = () => LONG / Math.max(cw, ch); // stroke units per css px
+
 function paint() {
   if (!cctx) return;
   const css = getComputedStyle(document.documentElement);
-  cctx.clearRect(0, 0, cSize, cSize);
-  const k = cSize / W;
+  cctx.clearRect(0, 0, cw, ch);
+  const k = 1 / unit();
   if (ui.game.config.practice.faintOutline) {
-    const pts = outlineToBox(itemOf(ui.game.places[ui.game.round]).outline, W, 0.15);
+    const o = itemOf(ui.game.places[ui.game.round]).outline;
+    const b = bbox(o);
+    const s = Math.min((cw * 0.8) / b.w, (ch * 0.8) / b.h);
+    const ox = (cw - b.w * s) / 2 - b.minX * s;
+    const oy = (ch - b.h * s) / 2 - b.minY * s;
     cctx.beginPath();
-    pts.forEach(([x, y], i) => (i ? cctx.lineTo(x * k, y * k) : cctx.moveTo(x * k, y * k)));
+    o.forEach(([x, y], i) => (i ? cctx.lineTo(x * s + ox, y * s + oy) : cctx.moveTo(x * s + ox, y * s + oy)));
     cctx.closePath();
     cctx.strokeStyle = css.getPropertyValue('--muted');
     cctx.globalAlpha = 0.25;
@@ -656,7 +754,7 @@ function paint() {
     cctx.globalAlpha = 1;
   }
   cctx.strokeStyle = css.getPropertyValue('--stroke');
-  cctx.lineWidth = 3;
+  cctx.lineWidth = 3.5;
   cctx.lineJoin = cctx.lineCap = 'round';
   for (const s of ui.strokes) {
     if (!s.length) continue;
@@ -665,11 +763,14 @@ function paint() {
     if (s.length === 1) cctx.lineTo(s[0][0] * k + 0.1, s[0][1] * k);
     cctx.stroke();
   }
+  const hint = document.getElementById('emptyhint');
+  if (hint) hint.hidden = ui.strokes.length > 0;
 }
 
 function pointFrom(e) {
   const r = cv.getBoundingClientRect();
-  return [((e.clientX - r.left) / r.width) * W, ((e.clientY - r.top) / r.height) * W];
+  const u = unit();
+  return [(e.clientX - r.left) * u, (e.clientY - r.top) * u];
 }
 
 function bindCanvas() {
@@ -699,7 +800,7 @@ function bindCanvas() {
     if (!drawing) return;
     const s = drawing;
     drawing = null;
-    if (s.length > 8 && Math.hypot(s[0][0] - s.at(-1)[0], s[0][1] - s.at(-1)[1]) < W * 0.05) {
+    if (s.length > 8 && Math.hypot(s[0][0] - s.at(-1)[0], s[0][1] - s.at(-1)[1]) < LONG * 0.05) {
       haptic(10);
       sfx.close();
     }
@@ -715,7 +816,7 @@ function submitDrawing() {
   dispatch({ type: 'submitDrawing', strokes });
 }
 
-// ---------------------------------------------------------------- guessing
+// ─────────────────────────────────────────── guessing
 function updateSugg() {
   const ul = document.getElementById('sugg');
   if (!ul) return;
@@ -734,9 +835,20 @@ function submitGuess() {
   dispatch({ type: 'guess', text: ui.draft });
 }
 
-// ---------------------------------------------------------------- events
+// ─────────────────────────────────────────── events
 function afterRender() {
   const g = ui.game;
+  if (!g && ui.pack) mountGlobe('homeglobe', ui.settings.packId, { spin: 5 });
+  if (g?.phase === 'gameOver') {
+    const res = results(ui.pack, g);
+    const human = res.seats.find((s) => s.kind === 'human').seat;
+    const hl = {};
+    for (const p of res.places) hl[itemOf(p.itemId).geo] = ui.barsOpen >= g.config.rounds ? p.accuracy[human] ?? 0 : 0.3;
+    mountGlobe('endglobe', ui.pack.id, { spin: 3, highlight: hl }).then(() => {
+      const last = itemOf(res.places.at(-1).itemId).centroid;
+      ui.globes.endglobe?.focus(last);
+    });
+  }
   if (g?.phase === 'draw') bindCanvas();
   if (g?.phase === 'clue') {
     const input = document.getElementById('guessinput');
@@ -746,12 +858,8 @@ function afterRender() {
       updateSugg();
     });
     input.addEventListener('keydown', (e) => {
-      if (e.key === 'ArrowDown') {
-        ui.sel = Math.min(ui.sugg.length - 1, ui.sel + 1);
-        updateSugg();
-        e.preventDefault();
-      } else if (e.key === 'ArrowUp') {
-        ui.sel = Math.max(-1, ui.sel - 1);
+      if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+        ui.sel = e.key === 'ArrowDown' ? Math.min(ui.sugg.length - 1, ui.sel + 1) : Math.max(-1, ui.sel - 1);
         updateSugg();
         e.preventDefault();
       }
@@ -770,60 +878,53 @@ function afterRender() {
         save();
       }),
     );
-    document.getElementById('practice')?.addEventListener('change', (e) => {
-      ui.settings.practice = e.target.checked;
-      save();
-      render();
-    });
   }
 }
 
 $app.addEventListener('click', async (e) => {
   unlockAudio();
-  const el = e.target.closest('[data-act],[data-pack],[data-lang],[data-skin],[data-sound],[data-diff],[data-step],[data-pick]');
+  const el = e.target.closest('[data-act],[data-pack],[data-lang],[data-skin],[data-toggle],[data-diff],[data-set],[data-pick]');
   if (!el) return;
   const d = el.dataset;
+  const s = ui.settings;
   if (d.pick) return dispatch({ type: 'guess', id: d.pick });
   if (d.pack) {
-    ui.settings.packId = d.pack;
+    s.packId = d.pack;
     ui.pack = await loadPack(d.pack);
-    ui.settings.difficulty = Object.keys(ui.pack.difficulties)[0];
+    if (!ui.pack.difficulties[s.difficulty]) s.difficulty = Object.keys(ui.pack.difficulties)[0];
     save();
     return render();
   }
   if (d.lang) {
-    ui.settings.lang = d.lang;
+    s.lang = d.lang;
     save();
+    ui.sheet = ui.game ? 'pause' : null;
     return render();
   }
   if (d.skin) {
-    ui.settings.skin = d.skin;
+    s.skin = d.skin;
     save();
     return render();
   }
-  if (d.sound) {
-    ui.settings.sound = d.sound === '1';
+  if (d.toggle) {
+    s[d.toggle] = !s[d.toggle];
     save();
     return render();
   }
   if (d.diff) {
-    ui.settings.difficulty = d.diff;
+    s.difficulty = d.diff;
     save();
     return render();
   }
-  if (d.step) {
-    const [lo, hi, inc] = LIMITS[d.step];
-    let max = hi;
-    if (d.step === 'rounds' && ui.pack) max = Math.min(hi, poolFor(ui.pack, ui.settings.difficulty).length);
-    if (d.step === 'hsBots') max = Math.min(hi, 4 - ui.settings.players);
-    ui.settings[d.step] = Math.min(max, Math.max(lo, ui.settings[d.step] + +d.d * inc));
-    if (d.step === 'players') ui.settings.hsBots = Math.min(ui.settings.hsBots, 4 - ui.settings.players);
+  if (d.set) {
+    s[d.set] = +d.v;
+    if (d.set === 'players') s.hsBots = Math.min(s.hsBots, 4 - s.players);
     save();
     return render();
   }
   switch (d.act) {
     case 'scrim':
-      if (e.target === el && ui.sheet !== 'setup') {
+      if (e.target === el) {
         ui.sheet = null;
         render();
       }
@@ -832,21 +933,24 @@ $app.addEventListener('click', async (e) => {
       ui.sheet = ui.game ? 'pause' : 'settings';
       return render();
     case 'sound':
-      ui.settings.sound = !ui.settings.sound;
+      s.sound = !s.sound;
       save();
       return render();
+    case 'skin':
+      s.skin = s.skin === 'daylight' ? 'nocturne' : 'daylight';
+      save();
+      render();
+      return toast(t('appearanceIs', { v: s.skin === 'daylight' ? t('light') : t('dark') }));
     case 'settings':
-      ui.deletedMsg = false;
-      ui.sheet = 'settings';
-      return render();
     case 'rules':
-      ui.sheet = 'rules';
+    case 'privacy':
+    case 'record':
+    case 'language':
+    case 'delete':
+      ui.sheet = d.act;
       return render();
     case 'closesheet':
       ui.sheet = null;
-      return render();
-    case 'delete':
-      ui.sheet = 'delete';
       return render();
     case 'deleteyes':
       try {
@@ -855,14 +959,19 @@ $app.addEventListener('click', async (e) => {
         /* nothing stored */
       }
       ui.record = emptyRecord();
-      ui.settings.names = ['', '', '', ''];
-      ui.deletedMsg = true;
-      ui.sheet = 'settings';
+      s.names = ['', '', '', ''];
+      s.practice = false;
+      ui.sheet = null;
+      render();
+      return toast(t('deleted'));
+    case 'resetrecord':
+      delete ui.record.packs[s.packId];
+      save();
       return render();
     case 'setup-solo':
     case 'setup-hs':
       ui.setupMode = d.act === 'setup-solo' ? 'solo' : 'hs';
-      ui.pack ??= await loadPack(ui.settings.packId);
+      ui.pack ??= await loadPack(s.packId);
       ui.sheet = 'setup';
       return render();
     case 'start':
@@ -876,14 +985,13 @@ $app.addEventListener('click', async (e) => {
       ui.game = createGame(ui.pack, { ...ui.config, seed: Math.floor(Math.random() * 2 ** 32) });
       ui.barsOpen = 0;
       ui.recorded = false;
+      ui.freshClue = true;
       resetPhase();
       return render();
     case 'ready':
       return dispatch({ type: 'ready' });
     case 'skip':
       return dispatch({ type: 'clueTimeout' });
-    case 'guess':
-      return submitGuess();
     case 'undo':
       ui.strokes.pop();
       return paint();
@@ -901,11 +1009,11 @@ $app.addEventListener('click', async (e) => {
     case 'opennext':
       ui.barsOpen++;
       sfx.bar();
+      render();
       if (ui.barsOpen >= ui.game.config.rounds) celebrate();
-      return render();
-    case 'openall':
-      openAllBars();
       return;
+    case 'openall':
+      return openAllBars();
     default:
   }
 });
@@ -918,33 +1026,33 @@ function openAllBars() {
     sfx.bar();
     render();
     if (ui.barsOpen >= n) celebrate();
-    else setTimeout(stepOpen, reduced() ? 0 : 280);
+    else setTimeout(stepOpen, reduced() ? 0 : 320);
   };
   stepOpen();
 }
 
 function celebrate() {
   const res = results(ui.pack, ui.game);
-  const humanWon = res.winners.some((i) => ui.game.config.seats[i].kind === 'human');
+  const humanWon = res.winners.some((i) => seat(i).kind === 'human');
   setTimeout(() => {
     if (humanWon) {
       sfx.fanfare();
-      confetti(140);
+      confetti(160);
     } else sfx.stamp(1);
-  }, 250);
+  }, 300);
 }
 
 window.addEventListener('resize', () => {
   if (ui.game?.phase === 'draw') sizeCanvas();
 });
 document.addEventListener('keydown', (e) => {
-  if (e.key === 'Escape' && ui.sheet && ui.sheet !== 'setup') {
+  if (e.key === 'Escape' && ui.sheet) {
     ui.sheet = null;
     render();
   }
 });
 
-// ---------------------------------------------------------------- boot
+// ─────────────────────────────────────────── boot
 applySkin();
 render();
 loadPack(ui.settings.packId)
@@ -954,6 +1062,6 @@ loadPack(ui.settings.packId)
     if (!ui.game) render();
   })
   .catch((err) => {
-    $app.innerHTML = `<div class="center"><h1>Pack failed to load</h1><p class="muted">${esc(err.message)}</p></div>`;
+    $app.innerHTML = `<div class="solo-center"><h1>Pack failed to load</h1><p class="muted">${esc(err.message)}</p></div>`;
   });
 requestAnimationFrame(() => clockLoop(performance.now()));
