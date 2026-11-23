@@ -3,9 +3,24 @@
 
 import { preparePack } from '../engine/pack.js';
 
+const t = (en, de, it, es, fr) => ({ en, de, it, es, fr });
+
+// Titles live here too so the menu can show every pack without loading it.
 export const PACKS = Object.freeze([
-  { id: 'world', load: () => Promise.all([import('./world/pack.js'), import('./world/outlines.js')]) },
-  { id: 'us-states', load: () => Promise.all([import('./us-states/pack.js'), import('./us-states/outlines.js')]) },
+  {
+    id: 'world',
+    mark: '🌍',
+    title: t('Countries', 'Länder', 'Paesi', 'Países', 'Pays'),
+    blurb: t('Outlines of the world', 'Umrisse der Welt', 'Contorni del mondo', 'Contornos del mundo', 'Contours du monde'),
+    load: () => Promise.all([import('./world/pack.js'), import('./world/outlines.js')]),
+  },
+  {
+    id: 'us-states',
+    mark: '🇺🇸',
+    title: t('US States', 'US-Bundesstaaten', 'Stati USA', 'Estados de EE. UU.', 'États américains'),
+    blurb: t('The shapes of the states', 'Die Formen der Staaten', 'Le forme degli stati', 'Las formas de los estados', 'Les formes des États'),
+    load: () => Promise.all([import('./us-states/pack.js'), import('./us-states/outlines.js')]),
+  },
 ]);
 
 const cache = new Map();
