@@ -675,9 +675,9 @@ function overlaySvg(turn, itemId, animate) {
   return `<svg class="pxov" viewBox="${(cx - side / 2).toFixed(1)} ${(cy - side / 2).toFixed(1)} ${side.toFixed(1)} ${side.toFixed(1)}" role="img" aria-label="${esc(cname(item))}">
     ${rings.map(r => `<path class="pxmine" d="${pathOf(r)}"/>`).join('')}<path class="pxreal${animate ? ' trace' : ''}" pathLength="1" d="${pathOf(real)}"/></svg>`;
 }
-function tierOf(m) { return m >= 1000 ? 'tierMaster' : m >= 100 ? 'tierGreat' : m >= 10 ? 'tierGood' : m > 1 ? 'tierFair' : 'tierBlob'; }
+function tierOf(m) { return m >= 90 ? 'tierMaster' : m >= 75 ? 'tierGreat' : m >= 55 ? 'tierGood' : m >= 30 ? 'tierFair' : 'tierBlob'; }
 function revealMoment() {
-  const turn = turnNow(), id = G.places[G.round], item = itemOf(id), q = turn.multiplier >= 100 ? 'bargain' : turn.multiplier >= 10 ? 'fair' : 'overpay';
+  const turn = turnNow(), id = G.places[G.round], item = itemOf(id), q = turn.multiplier >= 75 ? 'bargain' : turn.multiplier >= 55 ? 'fair' : 'overpay';
   const sec = go(`${navGame(roundPill(), false)}<div class="aud"></div>`, 'auction');
   bindGameNav();
   const wrap = document.createElement('div');
@@ -697,10 +697,10 @@ function revealMoment() {
     if (doneShown) return; doneShown = true;
     acc.textContent = target + '%';
     $$('.pxreal', wrap).forEach(p => p.classList.remove('trace'));
-    plate.style.opacity = 1; line.style.opacity = 1; rays.style.opacity = turn.multiplier >= 10 ? 1 : .35;
+    plate.style.opacity = 1; line.style.opacity = 1; rays.style.opacity = turn.multiplier >= 55 ? 1 : .35;
     if (!FX.reduced) plate.animate([{ transform: 'rotate(-4deg) scale(2.4)', opacity: 0 }, { transform: 'rotate(-4deg) scale(1)', opacity: 1 }], { duration: 420, easing: 'cubic-bezier(.2,1.6,.4,1)', fill: 'both' });
-    if (turn.multiplier >= 100) { Snd.fanfare(); Haptics.success(); if (!FX.reduced) FX.confetti(wrap, turn.multiplier >= 1000 ? 40 : 22); }
-    else if (turn.multiplier < 3) { Snd.sting(); Haptics.light(); } else { Snd.knock(0, .8); Haptics.medium(); }
+    if (turn.multiplier >= 75) { Snd.fanfare(); Haptics.success(); if (!FX.reduced) FX.confetti(wrap, turn.multiplier >= 90 ? 40 : 22); }
+    else if (turn.multiplier < 30) { Snd.sting(); Haptics.light(); } else { Snd.knock(0, .8); Haptics.medium(); }
     wrap.classList.add('ready');
   };
   plate.style.opacity = 0; line.style.opacity = .0; rays.style.opacity = 0;

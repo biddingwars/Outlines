@@ -205,7 +205,7 @@ function botTurn(pack, state, seat, sums) {
     // Lines are resolved per language by the view through botLine(); keep the kinds and seeds.
     lines: [
       { kind, seed: talk.int(2 ** 31) },
-      { kind: turn.multiplier >= 100 ? 'drawGood' : 'drawBad', seed: talk.int(2 ** 31) },
+      { kind: turn.multiplier >= 75 ? 'drawGood' : 'drawBad', seed: talk.int(2 ** 31) },
     ],
     skill: Math.round(skill * 1000) / 1000,
   };

@@ -1603,4 +1603,22 @@ const STRX3 = {
  }
 };
 Object.keys(STRX3).forEach(l => Object.assign(STR[l], STRX3[l]));
+const STRX4 = {
+ "en": {
+  "rulesP4": "Accuracy is how closely your line follows the real border. Size, position and a slight tilt don’t matter, and extra islands are ignored. Your accuracy is your multiplier: 70% means 70×, a perfect drawing 100×."
+ },
+ "de": {
+  "rulesP4": "Die Genauigkeit misst, wie nah deine Linie an der echten Grenze verläuft. Größe, Lage und eine leichte Neigung spielen keine Rolle, zusätzliche Inseln werden ignoriert. Deine Genauigkeit ist dein Multiplikator: 70 % bedeutet 70×, eine perfekte Zeichnung 100×."
+ },
+ "it": {
+  "rulesP4": "La precisione misura quanto la tua linea segue il confine reale. Dimensione, posizione e una leggera inclinazione non contano e le isole in più vengono ignorate. La tua precisione è il tuo moltiplicatore: 70% vale 70×, un disegno perfetto 100×."
+ },
+ "es": {
+  "rulesP4": "La precisión mide lo cerca que tu línea sigue la frontera real. El tamaño, la posición y una ligera inclinación no importan, y las islas de más se ignoran. Tu precisión es tu multiplicador: 70 % equivale a 70×, un dibujo perfecto a 100×."
+ },
+ "fr": {
+  "rulesP4": "La précision mesure à quel point ton trait suit la vraie frontière. La taille, la position et une légère inclinaison ne comptent pas, et les îles en plus sont ignorées. Ta précision est ton multiplicateur : 70 % donne 70×, un dessin parfait 100×."
+ }
+};
+Object.keys(STRX4).forEach(l => Object.assign(STR[l], STRX4[l]));
 const STRP = {};

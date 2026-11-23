@@ -1,7 +1,7 @@
 # Project X — project rules
 
 Work out a mystery place from clues, then draw its outline from memory.
-Guessing early earns base points (5 down to 1); drawing accurately multiplies them (1x to 1,000x).
+Guessing early earns base points (5 down to 1); drawing accurately multiplies them: the multiplier is the accuracy (70% = 70x, perfect = 100x).
 
 **Project X runs on the Bidding Wars shell.** The menu, sheets, settings, record,
 privacy, setup, sealed-bar results, 3D globe, sounds (`sound.js`), motion (`fx.js`),

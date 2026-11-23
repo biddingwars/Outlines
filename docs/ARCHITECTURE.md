@@ -163,7 +163,11 @@ It counts solo games only and skips practice games.
      Kenya 70%. A square for Egypt scores 82%. Half of Norway scores 10%.
    - A plain circle scores 63–67% on compact countries (about 3–5x) and 0% on
      long ones.
-   - Curve anchors: 55/70/85/95% → 1/10/100/1,000x.
+   - The multiplier is the accuracy itself (the play-tester's request): 70% = 70x,
+     a perfect drawing = 100x, never below 1x. Extra drawn shapes under 35% of
+     the biggest one (islands) are ignored. Trade-off, measured: drawing now
+     separates players less than guessing does. A player who always knows the
+     place on clue 1 but draws only circles beats the bot in 80% of games.
    - The bot's typical drawing scores about 64% (around 4x), below the
      play-tester's level, and reaches 100x or more in under 1% of rounds.
    - Every place gets the same, largest drawing area, so the canvas gives

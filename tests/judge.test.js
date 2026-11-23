@@ -50,16 +50,15 @@ test('a featureless circle or square scores far below a real drawing', () => {
     const t = pack.targetFor(id);
     const blob = judge(circle, t).accuracy;
     const real = judge([box(pack.byId.get(id).outline)], t).accuracy;
-    assert.ok(multiplierFor(blob) <= 10, `${id} circle ${blob}`);
     assert.ok(real - blob > 0.25, `${id} ${real} vs ${blob}`);
   }
   // On long, thin places a blob is worthless.
-  for (const id of ['CHL', 'NOR', 'ITA']) assert.equal(multiplierFor(judge(circle, world.targetFor(id)).accuracy), 1, id);
+  for (const id of ['CHL', 'NOR', 'ITA']) assert.ok(judge(circle, world.targetFor(id)).accuracy < 0.1, id);
 });
 
 test('a square drawn for a square-ish place scores well (Egypt)', () => {
   const square = [[[0, 0], [100, 0], [100, 100], [0, 100]]];
-  assert.ok(multiplierFor(judge(square, world.targetFor('EGY')).accuracy) >= 30);
+  assert.ok(multiplierFor(judge(square, world.targetFor('EGY')).accuracy) >= 75);
 });
 
 test('a drawing tilted by up to 30° is turned back before judging', () => {
@@ -119,9 +118,18 @@ test('real player drawings: recognisable shapes are rewarded', () => {
   const human = JSON.parse(readFileSync(new URL('./fixtures/human-drawings.json', import.meta.url), 'utf8'));
   const acc = Object.fromEntries(Object.entries(human).map(([id, d]) => [id, judge([d.drawing], world.targetFor(id)).accuracy]));
   // Spain and Germany were drawn with their real features.
-  for (const id of ['ESP', 'DEU']) assert.ok(multiplierFor(acc[id]) >= 40, `${id} ${acc[id]}`);
+  for (const id of ['ESP', 'DEU']) assert.ok(multiplierFor(acc[id]) >= 80, `${id} ${acc[id]}`);
   // France (a rounded square) and Kenya (a blob) are rough but still earn something.
-  for (const id of ['FRA', 'KEN']) assert.ok(multiplierFor(acc[id]) >= 5 && multiplierFor(acc[id]) < 60, `${id} ${acc[id]}`);
+  for (const id of ['FRA', 'KEN']) assert.ok(multiplierFor(acc[id]) >= 65 && multiplierFor(acc[id]) < 80, `${id} ${acc[id]}`);
   // Only the southern half of Norway was drawn.
   assert.ok(acc.NOR < 0.3, `NOR ${acc.NOR}`);
+});
+
+test('an island drawn next to the mainland costs nothing (Italy with Sicily)', () => {
+  const ring = box(outline(world, 'ITA'), 800);
+  const t = world.targetFor('ITA');
+  const island = Array.from({ length: 24 }, (_, i) => [300 + 60 * Math.cos((i / 24) * 6.2832), 900 + 35 * Math.sin((i / 24) * 6.2832)]);
+  const alone = judge([ring], t).accuracy;
+  const withIsland = judge([ring, island], t).accuracy;
+  assert.ok(Math.abs(alone - withIsland) < 0.02, `${alone} vs ${withIsland}`);
 });

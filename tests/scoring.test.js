@@ -2,24 +2,18 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { DEFAULT_CURVE, DEFAULT_RULES, multiplierFor, stampValue, accuracyFromGap, ZERO_GAP, basePointsFor, roundScore, validateCurve } from '../engine/scoring.js';
 
-test('curve hits its anchors', () => {
+test('the multiplier is the accuracy: 70 % = 70x, perfect = 100x, never below 1x', () => {
+  assert.equal(multiplierFor(0.7), 70);
+  assert.equal(multiplierFor(1), 100);
+  assert.equal(multiplierFor(0.843), 84);
   assert.equal(multiplierFor(0), 1);
-  assert.equal(multiplierFor(0.5), 1);
-  assert.equal(multiplierFor(0.55), 1);
-  assert.equal(multiplierFor(0.7), 10);
-  assert.equal(multiplierFor(0.85), 100);
-  assert.equal(multiplierFor(0.95), 1000);
-  assert.equal(multiplierFor(1), 1000);
-});
-
-test('curve is logarithmic between anchors and never decreases', () => {
-  assert.equal(multiplierFor(0.625), stampValue(Math.sqrt(10)));
-  assert.equal(multiplierFor(0.775), stampValue(Math.sqrt(1000)));
+  assert.equal(multiplierFor(0.004), 1);
+  assert.equal(multiplierFor(NaN), 1);
+  assert.equal(multiplierFor(2), 100);
   let prev = 0;
   for (let a = 0; a <= 1.0001; a += 0.001) {
     const m = multiplierFor(a);
-    assert.ok(m >= prev, `${a}: ${m} < ${prev}`);
-    assert.ok(m >= 1 && m <= 1000);
+    assert.ok(m >= prev && m >= 1 && m <= 100);
     prev = m;
   }
 });
@@ -46,17 +40,16 @@ test('base points by clue, minus wrong guesses, floor 1 when solved', () => {
   assert.equal(basePointsFor(1, 1, { ...DEFAULT_RULES, wrongGuessPenalty: 0 }), 4);
 });
 
-test('round score range is 0 or 1..5000', () => {
-  assert.equal(roundScore(5, 1000), 5000);
+test('round score range is 0 or 1..500', () => {
+  assert.equal(roundScore(5, 100), 500);
   assert.equal(roundScore(1, 1), 1);
-  assert.equal(roundScore(0, 1000), 0);
-  assert.equal(roundScore(3, 1.4), 4);
+  assert.equal(roundScore(0, 100), 0);
+  assert.equal(roundScore(3, 70), 210);
 });
 
 test('curve validation', () => {
   assert.equal(validateCurve(DEFAULT_CURVE), null);
+  assert.ok(validateCurve({ linear: true, max: 0 }));
   assert.ok(validateCurve({ anchors: [[0.3, 1]] }));
-  assert.ok(validateCurve({ anchors: [[0.3, 2], [0.5, 10]] }));
-  assert.ok(validateCurve({ anchors: [[0.5, 1], [0.4, 10]] }));
   assert.ok(validateCurve(null));
 });

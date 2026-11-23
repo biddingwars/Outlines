@@ -1,7 +1,7 @@
 # Project X (working title)
 
 Work out a mystery place from clues, then draw its outline from memory.
-Guessing fast earns base points, and drawing accurately multiplies them (1x to 1,000x).
+Guessing fast earns base points, and drawing accurately multiplies them: 70% accuracy = 70x, perfect = 100x.
 
 The game is offline and private: no accounts, no network, five languages. It is plain HTML, CSS and JS with no build step.
 

@@ -44,7 +44,7 @@ test('a solo game from start to finish', () => {
     assert.equal(t.solvedAt, r % 5);
     assert.equal(t.base, 5 - (r % 5));
     assert.ok(t.accuracy > 0.85);
-    assert.ok(t.multiplier >= 100);
+    assert.ok(t.multiplier >= 85);
     assert.equal(t.score, Math.round(t.base * t.multiplier));
     s = step(world, s, { type: 'continue' });
     assert.equal(s.phase, 'roundEnd');

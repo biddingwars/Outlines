@@ -31,6 +31,7 @@ export const JUDGE_DEFAULTS = Object.freeze({
     [0.866025403784, 0.5],
   ],
   samples: 256, // boundary samples per shape for the gap measure
+  islandShare: 0.35, // drawn shapes smaller than this share of the biggest are ignored
   minBlobGap: 0.04, // floor for a shape's blob gap (near-rectangular states)
   maxBlobGap: 0.2, // ceiling for thin shapes, where a blob is too easy to beat
 });
@@ -258,7 +259,12 @@ function measureDrawing(rings, n) {
  */
 export function judge(strokes, target, opts = {}) {
   const o = { ...JUDGE_DEFAULTS, ...opts };
-  const rings = cleanStrokes(strokes, o).filter((r) => r.length >= 3);
+  // Only the main landmass is scored. Extra shapes a player adds (Sicily,
+  // Northern Ireland, Tasmania) are ignored when they are much smaller than
+  // the main one, so drawing an island never costs points.
+  const all = cleanStrokes(strokes, o).filter((r) => r.length >= 3);
+  const big = all.reduce((mx, r) => Math.max(mx, area(r)), 0);
+  const rings = all.filter((r) => area(r) >= o.islandShare * big);
   const empty = { accuracy: 0, overlap: 0, iou: 0, gap: Infinity, baseline: target.baseline, empty: true, fit: null, rings };
   if (!rings.length) return empty;
   const m = measureDrawing(rings, target.grid);

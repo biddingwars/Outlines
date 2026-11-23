@@ -1,18 +1,11 @@
 // Points: base points from guessing, multiplier from drawing, round score.
 
 /**
- * The multiplier curve: piecewise linear in log10(multiplier) through these
- * anchors of [accuracy, multiplier]. Below the first anchor it is 1x, above
- * the last it is the last value. Tuned with tools/tune-curve.mjs.
+ * The multiplier is the accuracy itself: 70 % accuracy = 70x, a perfect
+ * drawing = 100x, never below 1x. (A play-tester asked for exactly this:
+ * the number on the plate should be the number you earned.)
  */
-export const DEFAULT_CURVE = Object.freeze({
-  anchors: Object.freeze([
-    Object.freeze([0.55, 1]),
-    Object.freeze([0.7, 10]),
-    Object.freeze([0.85, 100]),
-    Object.freeze([0.95, 1000]),
-  ]),
-});
+export const DEFAULT_CURVE = Object.freeze({ linear: true, max: 100 });
 
 export const DEFAULT_RULES = Object.freeze({
   /** Base points by the clue the place was guessed on (index 0 = clue 1). */
@@ -52,35 +45,16 @@ export function stampValue(m) {
   return Math.round(m / 100) * 100;
 }
 
-/** Multiplier for an accuracy in [0, 1]. */
+/** Multiplier for an accuracy in [0, 1]: accuracy × max, rounded, at least 1. */
 export function multiplierFor(accuracy, curve = DEFAULT_CURVE) {
-  const pts = curve.anchors;
-  if (!(accuracy > pts[0][0])) return stampValue(pts[0][1]);
-  const last = pts[pts.length - 1];
-  if (accuracy >= last[0]) return stampValue(last[1]);
-  for (let i = 1; i < pts.length; i++) {
-    const [x1, m1] = pts[i];
-    if (accuracy <= x1) {
-      const [x0, m0] = pts[i - 1];
-      const t = (accuracy - x0) / (x1 - x0);
-      const lg = Math.log10(m0) + t * (Math.log10(m1) - Math.log10(m0));
-      return stampValue(10 ** lg);
-    }
-  }
-  return stampValue(last[1]);
+  const a = accuracy > 0 ? (accuracy > 1 ? 1 : accuracy) : 0;
+  return Math.max(1, Math.round(a * curve.max));
 }
 
-/** Validate a curve: ≥2 anchors, accuracies strictly rising in (0,1], multipliers rising from 1. */
+/** Validate a curve: linear with a whole-number maximum of at least 1. */
 export function validateCurve(curve) {
-  const a = curve?.anchors;
-  if (!Array.isArray(a) || a.length < 2) return 'curve needs at least two anchors';
-  if (a[0][1] !== 1) return 'first anchor multiplier must be 1';
-  for (let i = 0; i < a.length; i++) {
-    const [x, m] = a[i];
-    if (!(x >= 0 && x <= 1)) return `anchor ${i} accuracy out of range`;
-    if (!(m >= 1)) return `anchor ${i} multiplier below 1`;
-    if (i && !(x > a[i - 1][0] && m > a[i - 1][1])) return `anchor ${i} not increasing`;
-  }
+  if (!curve || curve.linear !== true) return 'curve must be linear';
+  if (!(Number.isInteger(curve.max) && curve.max >= 1)) return 'curve max must be a whole number ≥ 1';
   return null;
 }
 
