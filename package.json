@@ -9,7 +9,7 @@
   "scripts": {
     "test": "node --test \"tests/*.test.js\"",
     "golden:update": "node tools/golden.mjs --update",
-    "bundle": "node tools/bundle.mjs",
+    "build": "node tools/make-engine.mjs && node tools/make-packs.mjs",
     "sim": "node tools/simulate.mjs",
     "tune": "node tools/tune-curve.mjs",
     "build:outlines": "node tools/build-outlines.mjs"

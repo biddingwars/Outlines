@@ -7,7 +7,9 @@ The game is offline and private: no accounts, no network, five languages. It is 
 
 ## Status
 
-The engine and its tests are built. The screens are not built yet. See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
+Playable. The engine is new; the app shell (menu, sheets, results, globe, sound) comes from Bidding Wars. See [CLAUDE.md](CLAUDE.md) and [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
+
+Run it: serve the folder (for example `npx serve .`) and open `index.html`.
 
 ```sh
 npm test                # unit, golden, fuzz, simulation and purity tests (Node 20 or later)

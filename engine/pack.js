@@ -125,7 +125,7 @@ export function preparePack(pack, outlines) {
   }
   const items = pack.items.map((it) => {
     const geo = outlines.items[it.geo];
-    return Object.freeze({ ...it, outline: unflatten(geo.pts), centroid: geo.c, kmPerUnit: geo.km, mainShare: geo.share });
+    return Object.freeze({ ...it, outline: unflatten(geo.pts), centroid: geo.c, lon: geo.c[0], lat: geo.c[1], kmPerUnit: geo.km, mainShare: geo.share });
   });
   const byId = new Map(items.map((it) => [it.id, it]));
   const targets = new Map();
@@ -147,4 +147,9 @@ export function poolFor(pack, difficulty) {
   const d = pack.difficulties[difficulty];
   if (!d) throw new Error(`unknown difficulty "${difficulty}"`);
   return pack.items.filter((it) => it.tier <= d.maxTier).map((it) => it.id);
+}
+
+/** True when an item has a position (the globe on the results screen uses it). */
+export function hasCoords(item) {
+  return !!item && Number.isFinite(item.lat) && Number.isFinite(item.lon);
 }

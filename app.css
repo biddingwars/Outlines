@@ -1,0 +1,647 @@
+/* ============================================================================
+   Bidding Wars — "Nocturne": dark glass, brass gold, system fonts only.
+
+   Everything that differs between Nocturne (dark, the default) and Daylight
+   (light) is a design TOKEN below, so no rule needs a theme-specific copy.
+   The theme follows the phone; a forced choice is `data-theme` on <html>.
+   Flat file, flat paths — see CLAUDE.md.
+   ========================================================================== */
+
+*{box-sizing:border-box;margin:0;padding:0}
+[hidden]{display:none!important}
+
+/* ---------- tokens: Nocturne (dark) ---------- */
+:root{
+  color-scheme:dark;
+  --font:-apple-system,BlinkMacSystemFont,"SF Pro Text",system-ui,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
+  --round:ui-rounded,"SF Pro Rounded",-apple-system,BlinkMacSystemFont,system-ui,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
+  --mono:ui-monospace,"SF Mono",SFMono-Regular,Menlo,Consolas,monospace;
+
+  /* Nocturne = the warm near-black of design direction A ("Galerie"): page #0E0D0B, cards #1C1B17 / #242320, warm ivory ink, brass. No blue in the dark theme. */
+  --bg1:#0E0D0B; --bg2:#0E0D0B; --blob1:rgba(227,179,90,.13); --blob2:rgba(227,179,90,.05);
+  --ink:#F6F2E9; --ink2:#B5AFA1; --ink3:#B0AA9C;
+  --glass:rgba(255,246,228,.06); --glass2:rgba(255,246,228,.10); --stroke:rgba(255,246,228,.10); --hi:rgba(255,246,228,.22);
+  --field:rgba(0,0,0,.22);
+  /* brass gold */
+  --gold1:#EDC66F; --gold2:#C99A3F; --goldink:#EBC577; --on-gold:#261A04; --brass:#E3B35A;
+  --goldglow:rgba(201,154,63,.45); --goldtint:rgba(227,179,90,.14);
+  --danger:#FF8A7E; --danger-accent:#FF5A6A; --on-danger:#2B0008; --track:rgba(255,246,228,.12);
+  /* seats: 1 red, 2 black (dark slate so it reads on dark), 3 blue, 4 green. White initials on all. */
+  --seat0:#D13A32; --seat1:#5A5750; --seat2:#3468D8; --seat3:#0E7F5B;
+  --shadow:0 0 0 .5px rgba(255,246,228,.07),0 14px 34px rgba(0,0,0,.5);
+  --sheet1:#1C1B17; --sheet2:#14130F; --scrim:rgba(10,9,7,.84); --backdrop:rgba(6,5,3,.5);
+  --wood-glow:rgba(201,154,63,.5);
+  /* the blue halo round the menu globe: three stops of one colour, fading to nothing INSIDE its own box (never relies on a filter reaching outside it) */
+  --halo1:rgba(227,179,90,.34); --halo2:rgba(227,179,90,.15); --halo0:rgba(227,179,90,0);
+  /* US States: the dimmed flag behind everything (colours of the flag, strength set by --flag-op; contrast-tested) */
+  --flag-red:#B22234; --flag-white:#383E76; --flag-blue:#3C3B6E; --flag-star:#3C4278; --flag-op:.14;
+  /* US results map: the dim over everything outside the 48 states, the winner's gold */
+  --map-edge:#EDC66F;
+  /* celebration colours: confetti list, SOLD slab gradient + lettering, sparks (the US States theme swaps them for red / white / blue) */
+  --conf:#EDC66F,#C99A3F,#F4DC9A,#EDC66F,#7FA9FF,#FF8A96;
+  --slab1:#F4DC9A; --slab2:#E7BE62; --slab3:#C9953C; --slab-edge:#8A6620; --on-slab:#2B1E06; --slab-shadow:rgba(255,255,255,.4); --spark:#F4DC9A; --rays:rgba(227,179,90,.22);
+  --map-dim:rgba(10,9,7,.6); --map-line:rgba(255,255,255,.5); --map-win:rgba(237,198,111,.34); --map-glow:rgba(237,198,111,.55); --map-pin:#F6D993; --map-pin-ring:#14130F;
+
+  --top:max(env(safe-area-inset-top,0px),8px);
+  --bot:env(safe-area-inset-bottom,0px);
+  --padx:16px;
+}
+
+/* added to the home screen (iPad, iPhone): the status bar is drawn over the page (black-translucent) and on iPadOS its darkening band
+   reaches lower than the reported safe-area inset, which cut the top of the nav buttons. Give the nav real room below it. Not a theme token. */
+@media (display-mode: standalone){ :root{--top:max(calc(env(safe-area-inset-top,0px) + 10px),34px)} }
+
+/* ---------- tokens: Daylight (light) ---------- */
+:root[data-theme=light]{
+  color-scheme:light;
+  --bg1:#EEF0FF; --bg2:#FFF1E0; --blob1:rgba(255,170,60,.38); --blob2:rgba(120,130,255,.30);
+  --ink:#14152B; --ink2:#4A4C66; --ink3:#52546E;
+  --glass:rgba(255,255,255,.62); --glass2:rgba(255,255,255,.85); --stroke:rgba(255,255,255,.9); --hi:#fff;
+  --field:rgba(255,255,255,.75);
+  --gold1:#E7BE62; --gold2:#C9953C; --goldink:#684608; --on-gold:#2B1E06; --brass:#B8862B;
+  --goldglow:rgba(184,134,43,.4); --goldtint:rgba(184,134,43,.14);
+  --danger:#8F1727; --danger-accent:#BE2338; --on-danger:#FFFFFF; --track:rgba(20,21,43,.10);
+  --seat0:#D93A31; --seat1:#4E5778; --seat2:#2F6AE0; --seat3:#0E7F5B;
+  --shadow:0 18px 44px rgba(70,60,140,.20);
+  --halo1:rgba(80,115,255,.5); --halo2:rgba(80,115,255,.24); --halo0:rgba(80,115,255,0);
+  --sheet1:#FFFFFF; --sheet2:#F4F2FF; --scrim:rgba(246,243,255,.9); --backdrop:rgba(30,30,70,.32);
+  --flag-red:#E0808A; --flag-white:#FFFFFF; --flag-blue:#8A8BD0; --flag-star:#FFFFFF; --flag-op:.12;
+  --map-edge:#E7BE62;
+  --conf:#E7BE62,#C9953C,#F4DC9A,#E7BE62,#5F88F0,#E0606E;
+  --map-dim:rgba(238,240,255,.62); --map-line:rgba(20,21,43,.45); --map-win:rgba(231,190,98,.42); --map-glow:rgba(201,149,60,.6); --map-pin:#C9953C; --map-pin-ring:#FFFFFF;
+}
+
+/* ---------- US States: the accent is the flag's red instead of brass; the second kind of button is the flag's dark blue ----------
+   Set by syncPackTheme() (data-pack on <html>). Only tokens change, never a component rule; test/contrast.test.js checks both sets. */
+:root[data-pack=states]{
+  --gold1:#D93A4E; --gold2:#B01F33; --goldink:#FFA8B2; --on-gold:#FFFFFF; --brass:#FFA8B2;
+  --goldglow:rgba(200,40,62,.5); --goldtint:rgba(220,70,88,.16);
+  --btn2a:#34458A; --btn2b:#1B2760; --on-btn2:#FFFFFF; --btn2glow:rgba(40,58,140,.45);
+  --conf:#E24558,#FFFFFF,#4A6BC8,#E24558,#FFFFFF,#7F9BE8;
+  --slab1:#D13A4F; --slab2:#B8243A; --slab3:#921728; --slab-edge:#640F1C; --on-slab:#FFFFFF; --slab-shadow:rgba(0,0,0,.28); --spark:#FFFFFF; --rays:rgba(225,70,90,.2);
+}
+:root[data-theme=light][data-pack=states]{
+  --gold1:#D93A4E; --gold2:#B01F33; --goldink:#8F1727; --on-gold:#FFFFFF; --brass:#B01F33;
+  --goldglow:rgba(176,31,51,.4); --goldtint:rgba(190,35,56,.12);
+  --btn2a:#34458A; --btn2b:#1B2760; --on-btn2:#FFFFFF; --btn2glow:rgba(40,58,140,.35);
+  --conf:#D93A4E,#FFFFFF,#3C5BB0,#D93A4E,#9FB4EE,#3C5BB0;
+}
+:root[data-pack=states] .btn.glassb,:root[data-pack=states] .btn.ghost,:root[data-pack=states] .btn.drop{background:linear-gradient(180deg,var(--btn2a),var(--btn2b));color:var(--on-btn2);border:1px solid rgba(255,255,255,.14);box-shadow:0 8px 24px var(--btn2glow),inset 0 1px 0 rgba(255,255,255,.22);-webkit-backdrop-filter:none;backdrop-filter:none}
+
+/* ---------- base ---------- */
+html,body{position:fixed;inset:0;width:100%;height:100%;overflow:hidden;overscroll-behavior:none}
+html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
+body{
+  font-family:var(--font);font-size:1rem;line-height:1.4;color:var(--ink);overflow:hidden;
+  -webkit-font-smoothing:antialiased;letter-spacing:-.01em;
+  overscroll-behavior:none;touch-action:manipulation;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none;
+  background:radial-gradient(60% 40% at 12% 8%,var(--blob1),transparent 70%),radial-gradient(70% 46% at 100% 30%,var(--blob2),transparent 72%),linear-gradient(180deg,var(--bg1),var(--bg2));
+  background-color:var(--bg1);
+}
+input,textarea{-webkit-user-select:text;user-select:text}
+button{font:inherit;color:inherit;border:0;background:none;cursor:pointer;-webkit-tap-highlight-color:transparent;letter-spacing:inherit}
+button:disabled{cursor:default}
+a{color:var(--goldink)}
+a.btn{text-decoration:none}
+.num{font-variant-numeric:tabular-nums}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+:focus-visible{outline:3px solid var(--gold1);outline-offset:2px}
+input:focus-visible{outline-offset:0}
+svg.i{width:20px;height:20px;stroke:currentColor;fill:none;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round;flex:none}
+svg.i.sm{width:16px;height:16px}
+
+/* ---------- US States: a stylised, dimmed flag behind everything ----------
+   Two fixed layers on <body> (so nothing in the DOM): the stripes + canton, and the stars as a mask. Only the
+   `body.pk-states` class (set by syncPackTheme in app.js) turns it on. Strength = --flag-op, checked by test/contrast.test.js. */
+body.pk-states{--fw:max(100vw,120vh)}                       /* flag width: always covers the width, never tilted */
+body.pk-states::before,body.pk-states::after{content:"";position:fixed;z-index:0;pointer-events:none;left:0;top:0;opacity:var(--flag-op)}
+body.pk-states::before{width:var(--fw);height:calc(var(--fw) * .5263);
+  background:linear-gradient(var(--flag-blue),var(--flag-blue)) 0 0/40% 53.85% no-repeat,repeating-linear-gradient(180deg,var(--flag-red) 0 7.6923%,var(--flag-white) 7.6923% 15.3846%);
+  -webkit-mask-image:linear-gradient(180deg,#000 0%,rgba(0,0,0,.55) 55%,rgba(0,0,0,.18) 100%);mask-image:linear-gradient(180deg,#000 0%,rgba(0,0,0,.55) 55%,rgba(0,0,0,.18) 100%)}
+body.pk-states::after{width:calc(var(--fw) * .4);height:calc(var(--fw) * .2834);background:var(--flag-star);
+  -webkit-mask:url("data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 120 90%22 preserveAspectRatio=%22none%22%3E%3Cpolygon points=%2210.0,1.1 10.9,3.8 13.7,3.8 11.4,5.5 12.3,8.2 10.0,6.5 7.7,8.2 8.6,5.5 6.3,3.8 9.1,3.8%22/%3E%3Cpolygon points=%2230.0,1.1 30.9,3.8 33.7,3.8 31.4,5.5 32.3,8.2 30.0,6.5 27.7,8.2 28.6,5.5 26.3,3.8 29.1,3.8%22/%3E%3Cpolygon points=%2250.0,1.1 50.9,3.8 53.7,3.8 51.4,5.5 52.3,8.2 50.0,6.5 47.7,8.2 48.6,5.5 46.3,3.8 49.1,3.8%22/%3E%3Cpolygon points=%2270.0,1.1 70.9,3.8 73.7,3.8 71.4,5.5 72.3,8.2 70.0,6.5 67.7,8.2 68.6,5.5 66.3,3.8 69.1,3.8%22/%3E%3Cpolygon points=%2290.0,1.1 90.9,3.8 93.7,3.8 91.4,5.5 92.3,8.2 90.0,6.5 87.7,8.2 88.6,5.5 86.3,3.8 89.1,3.8%22/%3E%3Cpolygon points=%22110.0,1.1 110.9,3.8 113.7,3.8 111.4,5.5 112.3,8.2 110.0,6.5 107.7,8.2 108.6,5.5 106.3,3.8 109.1,3.8%22/%3E%3Cpolygon points=%2210.0,21.1 10.9,23.8 13.7,23.8 11.4,25.5 12.3,28.2 10.0,26.5 7.7,28.2 8.6,25.5 6.3,23.8 9.1,23.8%22/%3E%3Cpolygon points=%2230.0,21.1 30.9,23.8 33.7,23.8 31.4,25.5 32.3,28.2 30.0,26.5 27.7,28.2 28.6,25.5 26.3,23.8 29.1,23.8%22/%3E%3Cpolygon points=%2250.0,21.1 50.9,23.8 53.7,23.8 51.4,25.5 52.3,28.2 50.0,26.5 47.7,28.2 48.6,25.5 46.3,23.8 49.1,23.8%22/%3E%3Cpolygon points=%2270.0,21.1 70.9,23.8 73.7,23.8 71.4,25.5 72.3,28.2 70.0,26.5 67.7,28.2 68.6,25.5 66.3,23.8 69.1,23.8%22/%3E%3Cpolygon points=%2290.0,21.1 90.9,23.8 93.7,23.8 91.4,25.5 92.3,28.2 90.0,26.5 87.7,28.2 88.6,25.5 86.3,23.8 89.1,23.8%22/%3E%3Cpolygon points=%22110.0,21.1 110.9,23.8 113.7,23.8 111.4,25.5 112.3,28.2 110.0,26.5 107.7,28.2 108.6,25.5 106.3,23.8 109.1,23.8%22/%3E%3Cpolygon points=%2210.0,41.1 10.9,43.8 13.7,43.8 11.4,45.5 12.3,48.2 10.0,46.5 7.7,48.2 8.6,45.5 6.3,43.8 9.1,43.8%22/%3E%3Cpolygon points=%2230.0,41.1 30.9,43.8 33.7,43.8 31.4,45.5 32.3,48.2 30.0,46.5 27.7,48.2 28.6,45.5 26.3,43.8 29.1,43.8%22/%3E%3Cpolygon points=%2250.0,41.1 50.9,43.8 53.7,43.8 51.4,45.5 52.3,48.2 50.0,46.5 47.7,48.2 48.6,45.5 46.3,43.8 49.1,43.8%22/%3E%3Cpolygon points=%2270.0,41.1 70.9,43.8 73.7,43.8 71.4,45.5 72.3,48.2 70.0,46.5 67.7,48.2 68.6,45.5 66.3,43.8 69.1,43.8%22/%3E%3Cpolygon points=%2290.0,41.1 90.9,43.8 93.7,43.8 91.4,45.5 92.3,48.2 90.0,46.5 87.7,48.2 88.6,45.5 86.3,43.8 89.1,43.8%22/%3E%3Cpolygon points=%22110.0,41.1 110.9,43.8 113.7,43.8 111.4,45.5 112.3,48.2 110.0,46.5 107.7,48.2 108.6,45.5 106.3,43.8 109.1,43.8%22/%3E%3Cpolygon points=%2210.0,61.1 10.9,63.8 13.7,63.8 11.4,65.5 12.3,68.2 10.0,66.5 7.7,68.2 8.6,65.5 6.3,63.8 9.1,63.8%22/%3E%3Cpolygon points=%2230.0,61.1 30.9,63.8 33.7,63.8 31.4,65.5 32.3,68.2 30.0,66.5 27.7,68.2 28.6,65.5 26.3,63.8 29.1,63.8%22/%3E%3Cpolygon points=%2250.0,61.1 50.9,63.8 53.7,63.8 51.4,65.5 52.3,68.2 50.0,66.5 47.7,68.2 48.6,65.5 46.3,63.8 49.1,63.8%22/%3E%3Cpolygon points=%2270.0,61.1 70.9,63.8 73.7,63.8 71.4,65.5 72.3,68.2 70.0,66.5 67.7,68.2 68.6,65.5 66.3,63.8 69.1,63.8%22/%3E%3Cpolygon points=%2290.0,61.1 90.9,63.8 93.7,63.8 91.4,65.5 92.3,68.2 90.0,66.5 87.7,68.2 88.6,65.5 86.3,63.8 89.1,63.8%22/%3E%3Cpolygon points=%22110.0,61.1 110.9,63.8 113.7,63.8 111.4,65.5 112.3,68.2 110.0,66.5 107.7,68.2 108.6,65.5 106.3,63.8 109.1,63.8%22/%3E%3Cpolygon points=%2210.0,81.1 10.9,83.8 13.7,83.8 11.4,85.5 12.3,88.2 10.0,86.5 7.7,88.2 8.6,85.5 6.3,83.8 9.1,83.8%22/%3E%3Cpolygon points=%2230.0,81.1 30.9,83.8 33.7,83.8 31.4,85.5 32.3,88.2 30.0,86.5 27.7,88.2 28.6,85.5 26.3,83.8 29.1,83.8%22/%3E%3Cpolygon points=%2250.0,81.1 50.9,83.8 53.7,83.8 51.4,85.5 52.3,88.2 50.0,86.5 47.7,88.2 48.6,85.5 46.3,83.8 49.1,83.8%22/%3E%3Cpolygon points=%2270.0,81.1 70.9,83.8 73.7,83.8 71.4,85.5 72.3,88.2 70.0,86.5 67.7,88.2 68.6,85.5 66.3,83.8 69.1,83.8%22/%3E%3Cpolygon points=%2290.0,81.1 90.9,83.8 93.7,83.8 91.4,85.5 92.3,88.2 90.0,86.5 87.7,88.2 88.6,85.5 86.3,83.8 89.1,83.8%22/%3E%3Cpolygon points=%22110.0,81.1 110.9,83.8 113.7,83.8 111.4,85.5 112.3,88.2 110.0,86.5 107.7,88.2 108.6,85.5 106.3,83.8 109.1,83.8%22/%3E%3Cpolygon points=%2220.0,11.1 20.9,13.8 23.7,13.8 21.4,15.5 22.3,18.2 20.0,16.5 17.7,18.2 18.6,15.5 16.3,13.8 19.1,13.8%22/%3E%3Cpolygon points=%2240.0,11.1 40.9,13.8 43.7,13.8 41.4,15.5 42.3,18.2 40.0,16.5 37.7,18.2 38.6,15.5 36.3,13.8 39.1,13.8%22/%3E%3Cpolygon points=%2260.0,11.1 60.9,13.8 63.7,13.8 61.4,15.5 62.3,18.2 60.0,16.5 57.7,18.2 58.6,15.5 56.3,13.8 59.1,13.8%22/%3E%3Cpolygon points=%2280.0,11.1 80.9,13.8 83.7,13.8 81.4,15.5 82.3,18.2 80.0,16.5 77.7,18.2 78.6,15.5 76.3,13.8 79.1,13.8%22/%3E%3Cpolygon points=%22100.0,11.1 100.9,13.8 103.7,13.8 101.4,15.5 102.3,18.2 100.0,16.5 97.7,18.2 98.6,15.5 96.3,13.8 99.1,13.8%22/%3E%3Cpolygon points=%2220.0,31.1 20.9,33.8 23.7,33.8 21.4,35.5 22.3,38.2 20.0,36.5 17.7,38.2 18.6,35.5 16.3,33.8 19.1,33.8%22/%3E%3Cpolygon points=%2240.0,31.1 40.9,33.8 43.7,33.8 41.4,35.5 42.3,38.2 40.0,36.5 37.7,38.2 38.6,35.5 36.3,33.8 39.1,33.8%22/%3E%3Cpolygon points=%2260.0,31.1 60.9,33.8 63.7,33.8 61.4,35.5 62.3,38.2 60.0,36.5 57.7,38.2 58.6,35.5 56.3,33.8 59.1,33.8%22/%3E%3Cpolygon points=%2280.0,31.1 80.9,33.8 83.7,33.8 81.4,35.5 82.3,38.2 80.0,36.5 77.7,38.2 78.6,35.5 76.3,33.8 79.1,33.8%22/%3E%3Cpolygon points=%22100.0,31.1 100.9,33.8 103.7,33.8 101.4,35.5 102.3,38.2 100.0,36.5 97.7,38.2 98.6,35.5 96.3,33.8 99.1,33.8%22/%3E%3Cpolygon points=%2220.0,51.1 20.9,53.8 23.7,53.8 21.4,55.5 22.3,58.2 20.0,56.5 17.7,58.2 18.6,55.5 16.3,53.8 19.1,53.8%22/%3E%3Cpolygon points=%2240.0,51.1 40.9,53.8 43.7,53.8 41.4,55.5 42.3,58.2 40.0,56.5 37.7,58.2 38.6,55.5 36.3,53.8 39.1,53.8%22/%3E%3Cpolygon points=%2260.0,51.1 60.9,53.8 63.7,53.8 61.4,55.5 62.3,58.2 60.0,56.5 57.7,58.2 58.6,55.5 56.3,53.8 59.1,53.8%22/%3E%3Cpolygon points=%2280.0,51.1 80.9,53.8 83.7,53.8 81.4,55.5 82.3,58.2 80.0,56.5 77.7,58.2 78.6,55.5 76.3,53.8 79.1,53.8%22/%3E%3Cpolygon points=%22100.0,51.1 100.9,53.8 103.7,53.8 101.4,55.5 102.3,58.2 100.0,56.5 97.7,58.2 98.6,55.5 96.3,53.8 99.1,53.8%22/%3E%3Cpolygon points=%2220.0,71.1 20.9,73.8 23.7,73.8 21.4,75.5 22.3,78.2 20.0,76.5 17.7,78.2 18.6,75.5 16.3,73.8 19.1,73.8%22/%3E%3Cpolygon points=%2240.0,71.1 40.9,73.8 43.7,73.8 41.4,75.5 42.3,78.2 40.0,76.5 37.7,78.2 38.6,75.5 36.3,73.8 39.1,73.8%22/%3E%3Cpolygon points=%2260.0,71.1 60.9,73.8 63.7,73.8 61.4,75.5 62.3,78.2 60.0,76.5 57.7,78.2 58.6,75.5 56.3,73.8 59.1,73.8%22/%3E%3Cpolygon points=%2280.0,71.1 80.9,73.8 83.7,73.8 81.4,75.5 82.3,78.2 80.0,76.5 77.7,78.2 78.6,75.5 76.3,73.8 79.1,73.8%22/%3E%3Cpolygon points=%22100.0,71.1 100.9,73.8 103.7,73.8 101.4,75.5 102.3,78.2 100.0,76.5 97.7,78.2 98.6,75.5 96.3,73.8 99.1,73.8%22/%3E%3C/svg%3E") 0 0/100% 100% no-repeat;mask:url("data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 120 90%22 preserveAspectRatio=%22none%22%3E%3Cpolygon points=%2210.0,1.1 10.9,3.8 13.7,3.8 11.4,5.5 12.3,8.2 10.0,6.5 7.7,8.2 8.6,5.5 6.3,3.8 9.1,3.8%22/%3E%3Cpolygon points=%2230.0,1.1 30.9,3.8 33.7,3.8 31.4,5.5 32.3,8.2 30.0,6.5 27.7,8.2 28.6,5.5 26.3,3.8 29.1,3.8%22/%3E%3Cpolygon points=%2250.0,1.1 50.9,3.8 53.7,3.8 51.4,5.5 52.3,8.2 50.0,6.5 47.7,8.2 48.6,5.5 46.3,3.8 49.1,3.8%22/%3E%3Cpolygon points=%2270.0,1.1 70.9,3.8 73.7,3.8 71.4,5.5 72.3,8.2 70.0,6.5 67.7,8.2 68.6,5.5 66.3,3.8 69.1,3.8%22/%3E%3Cpolygon points=%2290.0,1.1 90.9,3.8 93.7,3.8 91.4,5.5 92.3,8.2 90.0,6.5 87.7,8.2 88.6,5.5 86.3,3.8 89.1,3.8%22/%3E%3Cpolygon points=%22110.0,1.1 110.9,3.8 113.7,3.8 111.4,5.5 112.3,8.2 110.0,6.5 107.7,8.2 108.6,5.5 106.3,3.8 109.1,3.8%22/%3E%3Cpolygon points=%2210.0,21.1 10.9,23.8 13.7,23.8 11.4,25.5 12.3,28.2 10.0,26.5 7.7,28.2 8.6,25.5 6.3,23.8 9.1,23.8%22/%3E%3Cpolygon points=%2230.0,21.1 30.9,23.8 33.7,23.8 31.4,25.5 32.3,28.2 30.0,26.5 27.7,28.2 28.6,25.5 26.3,23.8 29.1,23.8%22/%3E%3Cpolygon points=%2250.0,21.1 50.9,23.8 53.7,23.8 51.4,25.5 52.3,28.2 50.0,26.5 47.7,28.2 48.6,25.5 46.3,23.8 49.1,23.8%22/%3E%3Cpolygon points=%2270.0,21.1 70.9,23.8 73.7,23.8 71.4,25.5 72.3,28.2 70.0,26.5 67.7,28.2 68.6,25.5 66.3,23.8 69.1,23.8%22/%3E%3Cpolygon points=%2290.0,21.1 90.9,23.8 93.7,23.8 91.4,25.5 92.3,28.2 90.0,26.5 87.7,28.2 88.6,25.5 86.3,23.8 89.1,23.8%22/%3E%3Cpolygon points=%22110.0,21.1 110.9,23.8 113.7,23.8 111.4,25.5 112.3,28.2 110.0,26.5 107.7,28.2 108.6,25.5 106.3,23.8 109.1,23.8%22/%3E%3Cpolygon points=%2210.0,41.1 10.9,43.8 13.7,43.8 11.4,45.5 12.3,48.2 10.0,46.5 7.7,48.2 8.6,45.5 6.3,43.8 9.1,43.8%22/%3E%3Cpolygon points=%2230.0,41.1 30.9,43.8 33.7,43.8 31.4,45.5 32.3,48.2 30.0,46.5 27.7,48.2 28.6,45.5 26.3,43.8 29.1,43.8%22/%3E%3Cpolygon points=%2250.0,41.1 50.9,43.8 53.7,43.8 51.4,45.5 52.3,48.2 50.0,46.5 47.7,48.2 48.6,45.5 46.3,43.8 49.1,43.8%22/%3E%3Cpolygon points=%2270.0,41.1 70.9,43.8 73.7,43.8 71.4,45.5 72.3,48.2 70.0,46.5 67.7,48.2 68.6,45.5 66.3,43.8 69.1,43.8%22/%3E%3Cpolygon points=%2290.0,41.1 90.9,43.8 93.7,43.8 91.4,45.5 92.3,48.2 90.0,46.5 87.7,48.2 88.6,45.5 86.3,43.8 89.1,43.8%22/%3E%3Cpolygon points=%22110.0,41.1 110.9,43.8 113.7,43.8 111.4,45.5 112.3,48.2 110.0,46.5 107.7,48.2 108.6,45.5 106.3,43.8 109.1,43.8%22/%3E%3Cpolygon points=%2210.0,61.1 10.9,63.8 13.7,63.8 11.4,65.5 12.3,68.2 10.0,66.5 7.7,68.2 8.6,65.5 6.3,63.8 9.1,63.8%22/%3E%3Cpolygon points=%2230.0,61.1 30.9,63.8 33.7,63.8 31.4,65.5 32.3,68.2 30.0,66.5 27.7,68.2 28.6,65.5 26.3,63.8 29.1,63.8%22/%3E%3Cpolygon points=%2250.0,61.1 50.9,63.8 53.7,63.8 51.4,65.5 52.3,68.2 50.0,66.5 47.7,68.2 48.6,65.5 46.3,63.8 49.1,63.8%22/%3E%3Cpolygon points=%2270.0,61.1 70.9,63.8 73.7,63.8 71.4,65.5 72.3,68.2 70.0,66.5 67.7,68.2 68.6,65.5 66.3,63.8 69.1,63.8%22/%3E%3Cpolygon points=%2290.0,61.1 90.9,63.8 93.7,63.8 91.4,65.5 92.3,68.2 90.0,66.5 87.7,68.2 88.6,65.5 86.3,63.8 89.1,63.8%22/%3E%3Cpolygon points=%22110.0,61.1 110.9,63.8 113.7,63.8 111.4,65.5 112.3,68.2 110.0,66.5 107.7,68.2 108.6,65.5 106.3,63.8 109.1,63.8%22/%3E%3Cpolygon points=%2210.0,81.1 10.9,83.8 13.7,83.8 11.4,85.5 12.3,88.2 10.0,86.5 7.7,88.2 8.6,85.5 6.3,83.8 9.1,83.8%22/%3E%3Cpolygon points=%2230.0,81.1 30.9,83.8 33.7,83.8 31.4,85.5 32.3,88.2 30.0,86.5 27.7,88.2 28.6,85.5 26.3,83.8 29.1,83.8%22/%3E%3Cpolygon points=%2250.0,81.1 50.9,83.8 53.7,83.8 51.4,85.5 52.3,88.2 50.0,86.5 47.7,88.2 48.6,85.5 46.3,83.8 49.1,83.8%22/%3E%3Cpolygon points=%2270.0,81.1 70.9,83.8 73.7,83.8 71.4,85.5 72.3,88.2 70.0,86.5 67.7,88.2 68.6,85.5 66.3,83.8 69.1,83.8%22/%3E%3Cpolygon points=%2290.0,81.1 90.9,83.8 93.7,83.8 91.4,85.5 92.3,88.2 90.0,86.5 87.7,88.2 88.6,85.5 86.3,83.8 89.1,83.8%22/%3E%3Cpolygon points=%22110.0,81.1 110.9,83.8 113.7,83.8 111.4,85.5 112.3,88.2 110.0,86.5 107.7,88.2 108.6,85.5 106.3,83.8 109.1,83.8%22/%3E%3Cpolygon points=%2220.0,11.1 20.9,13.8 23.7,13.8 21.4,15.5 22.3,18.2 20.0,16.5 17.7,18.2 18.6,15.5 16.3,13.8 19.1,13.8%22/%3E%3Cpolygon points=%2240.0,11.1 40.9,13.8 43.7,13.8 41.4,15.5 42.3,18.2 40.0,16.5 37.7,18.2 38.6,15.5 36.3,13.8 39.1,13.8%22/%3E%3Cpolygon points=%2260.0,11.1 60.9,13.8 63.7,13.8 61.4,15.5 62.3,18.2 60.0,16.5 57.7,18.2 58.6,15.5 56.3,13.8 59.1,13.8%22/%3E%3Cpolygon points=%2280.0,11.1 80.9,13.8 83.7,13.8 81.4,15.5 82.3,18.2 80.0,16.5 77.7,18.2 78.6,15.5 76.3,13.8 79.1,13.8%22/%3E%3Cpolygon points=%22100.0,11.1 100.9,13.8 103.7,13.8 101.4,15.5 102.3,18.2 100.0,16.5 97.7,18.2 98.6,15.5 96.3,13.8 99.1,13.8%22/%3E%3Cpolygon points=%2220.0,31.1 20.9,33.8 23.7,33.8 21.4,35.5 22.3,38.2 20.0,36.5 17.7,38.2 18.6,35.5 16.3,33.8 19.1,33.8%22/%3E%3Cpolygon points=%2240.0,31.1 40.9,33.8 43.7,33.8 41.4,35.5 42.3,38.2 40.0,36.5 37.7,38.2 38.6,35.5 36.3,33.8 39.1,33.8%22/%3E%3Cpolygon points=%2260.0,31.1 60.9,33.8 63.7,33.8 61.4,35.5 62.3,38.2 60.0,36.5 57.7,38.2 58.6,35.5 56.3,33.8 59.1,33.8%22/%3E%3Cpolygon points=%2280.0,31.1 80.9,33.8 83.7,33.8 81.4,35.5 82.3,38.2 80.0,36.5 77.7,38.2 78.6,35.5 76.3,33.8 79.1,33.8%22/%3E%3Cpolygon points=%22100.0,31.1 100.9,33.8 103.7,33.8 101.4,35.5 102.3,38.2 100.0,36.5 97.7,38.2 98.6,35.5 96.3,33.8 99.1,33.8%22/%3E%3Cpolygon points=%2220.0,51.1 20.9,53.8 23.7,53.8 21.4,55.5 22.3,58.2 20.0,56.5 17.7,58.2 18.6,55.5 16.3,53.8 19.1,53.8%22/%3E%3Cpolygon points=%2240.0,51.1 40.9,53.8 43.7,53.8 41.4,55.5 42.3,58.2 40.0,56.5 37.7,58.2 38.6,55.5 36.3,53.8 39.1,53.8%22/%3E%3Cpolygon points=%2260.0,51.1 60.9,53.8 63.7,53.8 61.4,55.5 62.3,58.2 60.0,56.5 57.7,58.2 58.6,55.5 56.3,53.8 59.1,53.8%22/%3E%3Cpolygon points=%2280.0,51.1 80.9,53.8 83.7,53.8 81.4,55.5 82.3,58.2 80.0,56.5 77.7,58.2 78.6,55.5 76.3,53.8 79.1,53.8%22/%3E%3Cpolygon points=%22100.0,51.1 100.9,53.8 103.7,53.8 101.4,55.5 102.3,58.2 100.0,56.5 97.7,58.2 98.6,55.5 96.3,53.8 99.1,53.8%22/%3E%3Cpolygon points=%2220.0,71.1 20.9,73.8 23.7,73.8 21.4,75.5 22.3,78.2 20.0,76.5 17.7,78.2 18.6,75.5 16.3,73.8 19.1,73.8%22/%3E%3Cpolygon points=%2240.0,71.1 40.9,73.8 43.7,73.8 41.4,75.5 42.3,78.2 40.0,76.5 37.7,78.2 38.6,75.5 36.3,73.8 39.1,73.8%22/%3E%3Cpolygon points=%2260.0,71.1 60.9,73.8 63.7,73.8 61.4,75.5 62.3,78.2 60.0,76.5 57.7,78.2 58.6,75.5 56.3,73.8 59.1,73.8%22/%3E%3Cpolygon points=%2280.0,71.1 80.9,73.8 83.7,73.8 81.4,75.5 82.3,78.2 80.0,76.5 77.7,78.2 78.6,75.5 76.3,73.8 79.1,73.8%22/%3E%3Cpolygon points=%22100.0,71.1 100.9,73.8 103.7,73.8 101.4,75.5 102.3,78.2 100.0,76.5 97.7,78.2 98.6,75.5 96.3,73.8 99.1,73.8%22/%3E%3C/svg%3E") 0 0/100% 100% no-repeat}
+
+/* ---------- launch curtain ---------- */
+#curtain{position:fixed;inset:0;z-index:200;display:grid;place-items:center;background:#0E0D0B;transition:opacity .4s}
+#curtain.gone{opacity:0;pointer-events:none}
+.curtain-mark{font:800 clamp(40px,12vw,64px)/.98 var(--round);letter-spacing:-.045em;text-align:center;color:#F5F6FF}
+.curtain-mark span{display:block;background:linear-gradient(180deg,#EDC66F,#C99A3F);-webkit-background-clip:text;background-clip:text;color:transparent}
+
+/* ---------- shell ---------- */
+#root{position:fixed;inset:0;display:flex;flex-direction:column;padding:var(--top) 0 0}
+#app{flex:1;min-height:0;display:flex;flex-direction:column;position:relative}
+.screen{
+  flex:1;min-height:0;display:flex;flex-direction:column;row-gap:10px;position:relative;width:100%;margin:0 auto;
+  padding:0 max(var(--padx),env(safe-area-inset-right,0px)) var(--bot) max(var(--padx),env(safe-area-inset-left,0px));
+  overflow-y:auto;overflow-x:hidden;overscroll-behavior:contain;scrollbar-width:none;   /* the phone globe runs off the right edge: no sideways scroll */
+}
+.screen::-webkit-scrollbar{display:none}
+.screen[data-screen=auction]{overflow:hidden;padding-bottom:0}
+/* the menu's globe glow reaches the top: let the scroll box start at the very top of the page (the safe-area strip becomes its padding) so the glow is cut by the screen edge, not by a line 8px below it */
+.screen[data-screen=menu]{margin-top:calc(0px - var(--top));padding-top:var(--top)}
+.menu-grid,.m-l,.m-r,.aud,.aud-l,.aud-r,.res2,.r-l,.r-r{display:contents}
+.aud-l,.aud-r,.m-l,.m-r,.r-l,.r-r,.stage{min-width:0}
+#layer{position:relative;z-index:50}
+
+/* ---------- glass, buttons, nav ---------- */
+.glass{background:var(--glass);-webkit-backdrop-filter:blur(28px) saturate(1.7);backdrop-filter:blur(28px) saturate(1.7);border-radius:26px;border:1px solid var(--stroke);box-shadow:var(--shadow),inset 0 1px 0 var(--hi)}
+.no-blur .glass,.no-blur .ibtn{-webkit-backdrop-filter:none;backdrop-filter:none}
+@supports not ((backdrop-filter:blur(1px)) or (-webkit-backdrop-filter:blur(1px))){
+  .glass{background:var(--sheet1)} .ibtn{background:var(--sheet1)}
+}
+.nav{display:flex;align-items:center;justify-content:space-between;gap:8px;min-height:48px;flex:none}
+.navr{display:flex;gap:8px;align-items:center}
+.ibtn{width:44px;height:44px;border-radius:50%;display:grid;place-items:center;color:var(--ink);background:var(--glass);border:1px solid var(--stroke);-webkit-backdrop-filter:blur(20px);backdrop-filter:blur(20px);box-shadow:inset 0 1px 0 var(--hi)}
+.ibtn.pill{width:auto;padding:0 14px 0 10px;gap:6px;border-radius:22px;grid-auto-flow:column;font-weight:600;font-size:15px}
+.ibtn.off{opacity:.62}
+.goldtext{background:linear-gradient(180deg,var(--gold1),var(--gold2));-webkit-background-clip:text;background-clip:text;color:transparent}
+.label{font-size:11.5px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--ink2)}
+.btn{min-height:48px;border-radius:24px;display:grid;place-items:center;font-weight:700;font-size:16px;letter-spacing:-.01em;padding:0 20px;text-align:center;line-height:1.15}
+.btn:active:not(:disabled){transform:scale(.98)}
+.btn.gold{background:linear-gradient(180deg,var(--gold1),var(--gold2));color:var(--on-gold);box-shadow:0 8px 24px var(--goldglow),inset 0 1px 0 rgba(255,255,255,.55)}
+.btn.glassb{background:var(--glass);border:1px solid var(--stroke);-webkit-backdrop-filter:blur(20px);backdrop-filter:blur(20px);box-shadow:inset 0 1px 0 var(--hi);color:var(--ink)}
+.btn.drop{background:color-mix(in srgb,var(--danger-accent) 8%,transparent);border:1px solid color-mix(in srgb,var(--danger-accent) 50%,transparent);color:var(--danger)}
+.btn.ghost{background:transparent;color:var(--ink2);font-weight:600}
+.btn.big{min-height:54px;border-radius:27px;font-size:17px}
+.btn:disabled,.rb:disabled,input:disabled{opacity:.4}
+.dot{width:10px;height:10px;border-radius:50%;display:inline-block;flex:none}
+.s0{background:var(--seat0)}.s1{background:var(--seat1)}.s2{background:var(--seat2)}.s3{background:var(--seat3)}
+.spin{display:inline-block;width:16px;height:16px;border:3px solid var(--track);border-top-color:var(--gold1);border-radius:50%;animation:sp .7s linear infinite;vertical-align:-3px}
+@keyframes sp{to{transform:rotate(360deg)}}
+.soon{display:inline-block;font-size:10px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--goldink);background:var(--goldtint);padding:3px 7px;border-radius:8px;margin-left:8px;vertical-align:2px}
+
+/* ---------- MENU ---------- */
+.hero{position:relative;flex:none;padding-top:2px;z-index:0;order:1}
+.hero[data-pk=states] img.globe{display:none}   /* States: the flag alone, no world globe */
+.packs{order:2}.recpill{order:3}.modes{order:4}.dockbar{order:5}.foot{order:9}
+.nav,.packs,.recpill,.modes,.dockbar{position:relative;z-index:2}
+.hero img.globe{--hp:48px;box-sizing:content-box;padding:var(--hp);background:radial-gradient(closest-side,var(--halo1) 58%,var(--halo2) 80%,var(--halo0) 100%);   /* the glow is the box's own background: it ends at 0 before the edge, so there is no seam to see */
+  position:absolute;right:calc(-120px - var(--hp));top:calc(-52px - var(--hp));width:280px;height:280px;opacity:.92;z-index:0;pointer-events:none}
+h1.title{font:800 42px/.98 var(--round);letter-spacing:-.045em;position:relative}
+h1.title span{display:block}
+.tag{margin-top:10px;font-size:15px;color:var(--ink2);max-width:210px;line-height:1.35;position:relative}
+.packs{display:flex;gap:10px;flex:none;margin:0 calc(-1 * var(--padx));padding:2px var(--padx) 4px;overflow-x:auto;scrollbar-width:none;scroll-snap-type:x proximity}
+.packs::-webkit-scrollbar{display:none}
+.pack{flex:none;width:136px;min-height:84px;border-radius:22px;padding:12px;position:relative;overflow:hidden;display:flex;flex-direction:column;justify-content:flex-end;text-align:left;scroll-snap-align:start}
+.pack b{font-size:16px;font-weight:700;letter-spacing:-.02em;line-height:1.15}
+.pack span.s{font-size:12px;color:var(--ink2)}
+.pack.on{background:linear-gradient(150deg,var(--goldtint),var(--glass));border:1.5px solid var(--gold1);box-shadow:0 10px 30px var(--goldglow),inset 0 1px 0 var(--hi)}
+.pack[data-pack]::before{position:absolute;left:10px;top:8px;font-size:17px;letter-spacing:2px}   /* a pack's flags show whether or not it is the selected one */
+.pack[data-pack=countries]::before{content:"🇯🇵🇧🇷🇰🇪🇲🇽"}
+.pack[data-pack=states]::before{content:"🇺🇸";letter-spacing:0}
+.pack[data-pack=capitals]::before{content:"🏛️";letter-spacing:0}
+.pack.off{background:var(--glass);border:1px solid var(--stroke)}
+.pack.off i{position:absolute;right:10px;top:10px;font-style:normal;font-size:10px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--goldink);background:var(--goldtint);padding:3px 7px;border-radius:8px}
+.modes{display:flex;flex-direction:column;gap:10px;flex:none}
+.mode{display:flex;align-items:center;gap:14px;padding:12px 16px;min-height:64px;border-radius:24px;text-align:left;width:100%}
+.mode:active{transform:scale(.985)}
+.mode .ic{width:44px;height:44px;border-radius:50%;display:grid;place-items:center;flex:none;background:linear-gradient(160deg,var(--gold1),var(--gold2));color:var(--on-gold)}
+.mode .ic.b{background:var(--seat2);color:#fff}
+.mode .ic.c{background:var(--glass2);color:var(--ink2);border:1px solid var(--stroke)}
+.mode .t{flex:1;min-width:0}
+.mode .t b{display:block;font-size:18px;font-weight:700;letter-spacing:-.025em;line-height:1.2}
+.mode .t span.d{display:block;font-size:13px;color:var(--ink2);margin-top:1px;line-height:1.3}
+.mode .go{width:34px;height:34px;border-radius:50%;background:var(--glass2);display:grid;place-items:center;color:var(--ink);flex:none}
+.mode.dim{opacity:.78}
+.dockbar{display:flex;gap:10px;align-items:center;flex:none;margin-top:auto;padding-bottom:6px}
+.chipbtn{flex:1;min-height:46px;border-radius:23px;display:flex;align-items:center;justify-content:center;gap:8px;font-size:14px;font-weight:600;color:var(--ink);min-width:0;padding:0 10px}
+.chipbtn:active{transform:scale(.985)}
+.chipbtn.sq{flex:none;width:46px;padding:0}
+.recpill{display:flex;align-items:center;gap:12px;padding:10px 16px;border-radius:22px;flex:none;text-align:left;width:100%}
+.recpill:active{transform:scale(.985)}
+.recpill .big{font:800 30px/1 var(--round);letter-spacing:-.04em;font-variant-numeric:tabular-nums}
+.recpill .big i{font-style:normal;color:var(--ink3);margin:0 3px}
+.recpill .m{flex:1;font-size:13px;color:var(--ink2);line-height:1.35;min-width:0}
+.recpill .m b{color:var(--ink);font-weight:600}
+.streak{font-size:12px;font-weight:800;color:var(--on-gold);background:linear-gradient(180deg,var(--gold1),var(--gold2));padding:5px 10px;border-radius:12px;white-space:nowrap}
+.foot .ver{text-transform:none;letter-spacing:.04em;font-variant-numeric:tabular-nums}
+.foot{text-align:center;font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;font-weight:600;color:var(--ink3);padding:2px 0 6px;flex:none}
+
+/* ---------- SHEETS (secondary screens, alerts) ---------- */
+.sheetwrap{position:fixed;inset:0;z-index:60;display:flex;align-items:flex-end;justify-content:center}
+.backdrop{position:absolute;inset:0;background:var(--backdrop);-webkit-backdrop-filter:blur(4px);backdrop-filter:blur(4px)}
+.sheetbox{
+  position:relative;width:100%;max-width:560px;max-height:92%;display:flex;flex-direction:column;color:var(--ink);
+  background:linear-gradient(180deg,var(--sheet1),var(--sheet2));border-radius:30px 30px 0 0;border:1px solid var(--stroke);border-bottom:0;
+  box-shadow:0 -14px 50px rgba(0,0,0,.45);padding:10px 0 0;
+}
+.sheetbox:focus{outline:none}
+.grab{width:38px;height:5px;border-radius:3px;background:var(--stroke);margin:0 auto 8px;flex:none}
+.sheetbody{overflow-y:auto;overscroll-behavior:contain;padding:2px 20px 14px;display:flex;flex-direction:column;gap:12px;min-height:0}
+.sheetfoot{flex:none;padding:10px 20px calc(14px + var(--bot));display:flex;flex-direction:column;gap:6px;border-top:1px solid color-mix(in srgb,var(--ink) 8%,transparent)}
+.sheetfoot:empty{display:none}
+.sbc{display:flex;flex-direction:column;gap:12px}
+.sheetbox .btn{width:100%}
+.sh-title{font:800 28px/1.1 var(--round);letter-spacing:-.035em}
+.sheetbox p{font-size:15px;color:var(--ink2);line-height:1.5}
+.sheetbox p b{color:var(--ink)}
+.sheetbox p.sm,.sm{font-size:13px}
+.sheetbox.alert{max-width:340px;border-radius:26px;border-bottom:1px solid var(--stroke);margin:auto 20px;padding-top:20px;text-align:center}
+.sheetwrap.alertwrap{align-items:center}
+.sheetbox.alert .sheetbody{align-items:center}
+.sheetbox.alert .sh-title{font-size:22px}
+.fld{display:flex;flex-direction:column;gap:7px}
+/* ---------- settings sheet ---------- */
+.sg.cur button{flex:0 1 auto;min-width:88px;font-size:13.5px;padding:0 12px}
+.row small{display:block;color:var(--ink2);font-size:12.5px;font-weight:400;line-height:1.35;margin-top:2px}
+.langrow{width:100%;text-align:left;color:var(--ink);border-radius:16px}
+.sw{width:100%;text-align:left;background:none;border:0;color:var(--ink);font:inherit;cursor:pointer}
+.sw .knob{flex:none;width:46px;height:28px;border-radius:14px;background:var(--glass);border:1px solid var(--stroke);position:relative;transition:background .18s}
+.sw .knob::after{content:'';position:absolute;top:3px;left:3px;width:20px;height:20px;border-radius:50%;background:var(--ink2);transition:transform .18s,background .18s}
+.sw[aria-checked=true] .knob{background:linear-gradient(180deg,var(--gold1),var(--gold2));border-color:transparent}
+.sw[aria-checked=true] .knob::after{transform:translateX(18px);background:var(--on-gold)}
+.slider{width:100%;accent-color:var(--gold1);min-height:34px;margin:0}
+.ticks{display:flex;justify-content:space-between;gap:4px;font-size:12px;color:var(--ink2);text-align:center}
+.ticks span{flex:1;min-width:0}
+.ticks span.on{color:var(--goldink);font-weight:800}
+.fairp{font-size:12.5px;font-weight:700;color:var(--goldink);margin-top:4px;flex:none;text-align:center}
+/* accessibility: seat shapes next to the seat colours, and a larger text step (menu, results and sheets; the auction screen keeps its own fitted sizes) */
+html[data-shapes="1"] .po .o,html[data-shapes="1"] .lbr .o{position:relative}
+html[data-shapes="1"] .po .o::after,html[data-shapes="1"] .lbr .o::after{content:'';position:absolute;right:-4px;bottom:-4px;width:16px;height:16px;background:var(--ink);border-radius:50%}
+html[data-shapes="1"] .o.s1::after{border-radius:3px}
+html[data-shapes="1"] .o.s2::after{border-radius:0;clip-path:polygon(50% 0,100% 50%,50% 100%,0 50%)}
+html[data-shapes="1"] .o.s3::after{border-radius:0;clip-path:polygon(50% 0,100% 100%,0 100%)}
+html[data-shapes="1"] .dot{width:12px;height:12px}
+html[data-shapes="1"] .dot.s1{border-radius:3px}
+html[data-shapes="1"] .dot.s2{border-radius:0;clip-path:polygon(50% 0,100% 50%,50% 100%,0 50%)}
+html[data-shapes="1"] .dot.s3{border-radius:0;clip-path:polygon(50% 0,100% 100%,0 100%)}
+html[data-tz="-1"] .sheetbox,html[data-tz="-1"] .screen:not([data-screen=auction]){zoom:.70}
+html[data-tz="-1"] .gl .globe{width:min(170px,58%)}   /* Small text: a smaller globe, so the results fit an iPhone SE without scrolling */
+html[data-tz="-1"] .gl .gph{width:min(150px,50%)}
+html[data-tz="-1"] .gl-us .usm{width:min(230px,70%)}   /* the US States results map, same reason */
+html[data-tz="1"] .sheetbox,html[data-tz="1"] .screen:not([data-screen=auction]){zoom:1.12}
+html[data-tz="2"] .sheetbox,html[data-tz="2"] .screen:not([data-screen=auction]){zoom:1.25}
+.sg{display:flex;gap:6px;flex-wrap:wrap}
+.sg button{flex:1;min-width:52px;min-height:44px;border-radius:22px;background:var(--glass);border:1px solid var(--stroke);font-weight:700;font-size:15px;color:var(--ink);padding:0 10px}
+.sg button:disabled{opacity:.38;cursor:default}
+.fld.inl{flex-direction:row;flex-wrap:wrap;align-items:center;justify-content:space-between}   /* People / Bots: label left, short segment right, hint underneath (keeps the setup short on an iPhone SE) */
+.fld.inl .sg{flex:0 0 auto;flex-wrap:nowrap}
+.fld.inl .sg button{flex:0 0 auto;min-width:56px;min-height:38px}
+.fld.inl .sm{flex:1 0 100%}
+.sg button[aria-checked=true]{background:linear-gradient(180deg,var(--gold1),var(--gold2));color:var(--on-gold);border-color:transparent;box-shadow:0 6px 18px var(--goldglow)}
+.lvls{display:flex;flex-direction:column;gap:6px}
+.lvl{display:flex;align-items:center;gap:12px;min-height:50px;padding:8px 14px;border-radius:18px;background:var(--glass);border:1px solid var(--stroke);text-align:left;color:var(--ink)}
+.lvl .tt{flex:1;min-width:0;font-weight:700;font-size:15px;line-height:1.25}
+.lvl .tt small{display:block;font-weight:500;font-size:13px;color:var(--ink2)}
+.lvl .ck{width:22px;height:22px;border-radius:50%;border:2px solid var(--ink3);flex:none;display:grid;place-items:center}
+.lvl[aria-checked=true]{border-color:var(--gold1);background:var(--goldtint)}
+.lvl[aria-checked=true] .ck{border-color:var(--gold1);background:var(--gold1);color:var(--on-gold)}
+.lvl[aria-checked=true] .ck::after{content:"";width:6px;height:10px;border:solid var(--on-gold);border-width:0 2.5px 2.5px 0;transform:translateY(-1px) rotate(40deg)}
+.budget{display:flex;justify-content:space-between;align-items:baseline;gap:10px;padding:10px 16px;border-radius:20px;background:var(--glass);border:1px solid var(--stroke)}
+.budget b{font:800 26px/1.1 var(--round);letter-spacing:-.03em}
+.budget small{font-size:12px;color:var(--ink2);display:block;font-weight:500;letter-spacing:0}
+.field,input.in{width:100%;min-height:48px;border-radius:24px;border:1px solid var(--stroke);background:var(--field);padding:0 18px;font:inherit;font-size:16px;color:var(--ink);min-width:0}
+.field::placeholder,input.in::placeholder{color:var(--ink3);opacity:1}
+.field.mid{text-align:center}
+.names{display:flex;flex-direction:column;gap:6px}
+.group{background:var(--glass);border-radius:20px;border:1px solid var(--stroke);overflow:hidden}
+.row{display:flex;align-items:center;gap:12px;padding:12px 14px;min-height:48px;position:relative;font-size:15px}
+.row+.row{border-top:1px solid var(--stroke)}
+.row .t{flex:1;min-width:0;font-weight:500}
+.row .val{color:var(--ink2);font-weight:600}
+button.row{width:100%;text-align:left}
+.rec3{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.rec3>div{background:var(--glass);border:1px solid var(--stroke);border-radius:18px;padding:10px 6px;text-align:center}
+.rec3 .rn{font:800 28px/1 var(--round);letter-spacing:-.03em}
+.rec3 .rl{font-size:11.5px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--ink2);margin-top:4px}
+.rec3 .w .rn{color:var(--goldink)}
+
+/* ---------- toast ---------- */
+.toast{position:fixed;left:50%;top:calc(var(--top) + 10px);transform:translateX(-50%);z-index:90;background:var(--sheet1);border:1px solid var(--stroke);color:var(--ink);padding:10px 16px;border-radius:18px;font-size:14px;font-weight:700;max-width:86vw;text-align:center;box-shadow:var(--shadow)}
+
+/* ---------- AUCTION ---------- */
+.lotpill{font-size:11.5px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--ink2);background:var(--glass);border:1px solid var(--stroke);padding:5px 12px;border-radius:12px;white-space:nowrap;flex:none}
+.stage{flex:1 1 0;min-height:0;container-type:size;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;position:relative}
+.head{display:flex;align-items:center;justify-content:center;gap:12px;max-width:100%}
+.orb{width:var(--orb,64px);height:var(--orb,64px);border-radius:50%;display:grid;place-items:center;font-size:calc(var(--orb,64px)*.56);line-height:1;flex:none;background:radial-gradient(circle at 35% 28%,var(--glass2),var(--glass));border:1px solid var(--stroke);box-shadow:0 12px 34px rgba(0,0,0,.28),inset 0 1px 0 var(--hi)}
+.head .orb{--orb:46px}
+.ibadge{font:800 .42em/1 var(--round);letter-spacing:-.02em}
+.cname{font:800 30px/1.1 var(--round);letter-spacing:-.04em;min-width:0;overflow-wrap:anywhere;text-wrap:balance;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;line-clamp:2;overflow:hidden}
+.cname.n2{font-size:25px}
+.cname.n3{font-size:21px}
+/* the stage is a size container that soaks up whatever height the nav, players and dock leave, and the ring
+   takes what is left of it after the name row, holder chip and taunt line (~120px) — so no screen height
+   needs a hand-tuned magic number */
+.ringwrap{--ring:clamp(104px,min(calc(100cqw - 32px),calc(100cqh - 124px)),268px);position:relative;width:var(--ring);height:var(--ring);margin:6px auto 0;flex:none}
+.ringwrap svg{position:absolute;inset:0;width:100%;height:100%;transform:rotate(-90deg);overflow:visible}
+.ringwrap .prog{stroke-dasharray:578.05;stroke-dashoffset:calc(578.05px * (1 - var(--p,1)));filter:drop-shadow(0 0 8px var(--goldglow))}
+.ringwrap.idle .prog{opacity:.3}
+.ringwrap.warn .prog{stroke:var(--danger-accent);filter:drop-shadow(0 0 10px var(--danger-accent))}
+.ringwrap .in{position:absolute;inset:14%;border-radius:50%;display:flex;flex-direction:column;align-items:center;justify-content:center;background:radial-gradient(circle at 50% 30%,var(--glass2),var(--glass));border:1px solid var(--stroke);box-shadow:inset 0 1px 0 var(--hi),0 0 60px var(--goldglow)}
+.ringwrap .lbl{font-size:clamp(8px,calc(var(--ring)*.052),10.5px);font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--ink2);margin-bottom:2px;text-align:center;max-width:90%}
+.price{font:800 calc(var(--ring)*.43)/.95 var(--round);letter-spacing:-.05em;font-variant-numeric:tabular-nums}
+.price sup{font-size:.4em;vertical-align:1.05em;margin-right:2px;color:var(--goldink);font-weight:800;letter-spacing:0}
+.secs{position:absolute;right:2%;top:2%;font-size:12px;font-weight:800;color:var(--ink);background:var(--sheet1);border:1px solid var(--stroke);padding:3px 8px;border-radius:10px;font-variant-numeric:tabular-nums}
+.ringwrap.warn .secs{background:var(--danger-accent);color:var(--on-danger);border-color:transparent}
+.secs:empty{display:none}
+.holder{display:inline-flex;align-items:center;gap:7px;font-size:13px;font-weight:700;background:var(--glass);border:1px solid var(--stroke);border-radius:14px;padding:5px 12px 5px 9px;margin-top:8px;max-width:100%}
+.holder span:last-child{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.taunt{font-size:13px;color:var(--ink2);font-style:italic;text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex:none;margin-top:6px;padding:0 6px;height:1.4em;max-width:100%}
+.taunt.fact{font-style:normal;white-space:normal;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:3;line-clamp:3;height:auto;max-height:4.3em;line-height:1.4;text-wrap:balance}
+.orbs{display:grid;grid-template-columns:repeat(var(--n,4),1fr);gap:6px;flex:none;padding-top:20px}
+.po{display:flex;flex-direction:column;align-items:center;position:relative;min-width:0}
+.po .o,.lbr .o{border-radius:50%;display:grid;place-items:center;font-weight:800;color:#fff;flex:none;border:2px solid rgba(255,255,255,.35);box-shadow:0 8px 20px rgba(0,0,0,.3),inset 0 2px 0 rgba(255,255,255,.3)}
+.po .o{width:54px;height:54px;font-size:20px}
+.o.s0{background:var(--seat0)}.o.s1{background:var(--seat1)}.o.s2{background:var(--seat2)}.o.s3{background:var(--seat3)}
+.po .nm{font-size:12.5px;font-weight:600;margin-top:4px;max-width:100%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.po .bd{font:800 14px/1.2 var(--round);letter-spacing:-.02em}
+.po .rl{font-size:11px;color:var(--ink2);font-weight:600;max-width:100%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.po.active .o{border-color:var(--gold1);box-shadow:0 0 0 4px var(--goldtint),0 0 28px var(--goldglow),inset 0 2px 0 rgba(255,255,255,.35)}
+.po .now{display:none;position:absolute;top:-19px;left:50%;transform:translateX(-50%);white-space:nowrap;font-size:10px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--on-gold);background:linear-gradient(180deg,var(--gold1),var(--gold2));padding:3px 8px;border-radius:9px;box-shadow:0 4px 12px var(--goldglow)}
+.po.active .now{display:block}
+.po .now::after{content:"";position:absolute;left:50%;bottom:-4px;margin-left:-4px;border:4px solid transparent;border-top-color:var(--gold2);border-bottom:0}
+.po .crown{position:absolute;top:-6px;right:calc(50% - 38px);font-size:15px;display:none}
+.po.top .crown{display:block}
+.po.out .o{opacity:.5;filter:saturate(.4)}
+.po.out .nm,.po.out .bd,.po.out .rl{opacity:.75}
+.dock{margin:0 calc(-1 * max(var(--padx),env(safe-area-inset-left,0px))) 0;padding:14px max(var(--padx),env(safe-area-inset-left,0px)) calc(12px + var(--bot));border-radius:30px 30px 0 0;display:flex;flex-direction:column;gap:10px;flex:none;border-bottom:0;margin-top:auto;align-self:stretch}
+.rnd{display:flex;justify-content:space-between}
+.rb{width:56px;height:56px;border-radius:50%;display:grid;place-items:center;font:800 17px/1 var(--round);background:linear-gradient(160deg,var(--glass2),var(--glass));border:1px solid var(--stroke);box-shadow:inset 0 1px 0 var(--hi),0 6px 16px rgba(0,0,0,.18);font-variant-numeric:tabular-nums;color:var(--ink);transition:transform .12s}
+.rb span{color:var(--goldink);font-size:12px;margin-right:1px}
+.rb:active:not(:disabled){transform:scale(.92)}
+.custom{display:flex;gap:10px}
+.custom .btn{width:112px;flex:none}
+.dock.bot .rnd,.dock.bot .custom,.dock.bot .drop{opacity:.4;pointer-events:none}
+.dock .hint{font-size:13px;color:var(--ink2);text-align:center}
+input[type=number]{-moz-appearance:textfield;appearance:textfield}
+input[type=number]::-webkit-outer-spin-button,input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none;margin:0}
+
+@media (max-height:640px){
+  .screen{row-gap:6px}
+  .nav{min-height:44px}
+  .head .orb{--orb:38px}
+  .cname{font-size:24px}
+  .cname.n2{font-size:21px}
+  .cname.n3{font-size:18px}
+  .holder{margin-top:4px;padding:3px 10px 3px 8px;font-size:12px}
+  .taunt{margin-top:2px;font-size:12px}
+  .taunt.fact{font-size:12px}
+  .orbs{padding-top:16px}
+  .po .o{width:44px;height:44px;font-size:17px}
+  .po .rl{display:none}
+  .dock{padding:10px max(var(--padx),env(safe-area-inset-left,0px)) calc(8px + var(--bot));gap:8px}
+  .rb{width:46px;height:46px;font-size:16px}
+  .dock .btn,.dock input.in{min-height:42px}
+  .ringwrap{--ring:clamp(96px,min(calc(100cqw - 32px),calc(100cqh - 100px)),228px)}
+}
+
+@media (max-height:640px){
+  .slab{padding:6px 24px 8px}
+  .slab b{font-size:clamp(30px,10vw,42px)}
+  .gvwrap{min-height:64px}
+  .slab small{margin-top:0}
+  .soldline .who{font-size:18px}
+  .deal{margin-top:6px;padding:5px 12px}
+  .tray{margin-top:8px;padding:6px 12px}
+  .nextbtn{margin-top:8px}
+  .skiphint{display:none}
+}
+@media (max-height:700px){
+  h1.title{font-size:36px}
+  .tag{margin-top:6px;font-size:14px}
+  .pack{min-height:70px;padding:10px}
+  .mode{min-height:56px;padding:8px 14px}
+  .recpill{padding:6px 14px}
+  .hero img.globe{width:240px;height:240px;top:calc(-44px - var(--hp))}
+  }
+
+/* ---------- SOLD (the gavel moment) ---------- */
+.overlay{contain:paint;display:flex;position:fixed;inset:0;z-index:50;flex-direction:column;align-items:center;justify-content:center;padding:calc(var(--top) + 8px) 20px var(--bot);overflow:hidden}
+.scrim{position:absolute;inset:0;z-index:-2;background:radial-gradient(60% 46% at 50% 38%,var(--goldglow),transparent 72%),linear-gradient(var(--scrim),var(--scrim))}
+.rays{position:absolute;left:50%;top:38%;width:900px;height:900px;margin:-450px 0 0 -450px;z-index:-1;will-change:transform,opacity;
+  background:repeating-conic-gradient(from 7deg,var(--rays) 0 4deg,transparent 4deg 18deg);
+  -webkit-mask:radial-gradient(circle,#000 8%,transparent 66%);mask:radial-gradient(circle,#000 8%,transparent 66%)}
+.flash{position:absolute;inset:0;z-index:1;pointer-events:none;background:radial-gradient(60% 50% at 40% 58%,var(--goldglow),transparent 70%)}
+.plate{will-change:transform,opacity}
+.slab{position:relative;transform:rotate(-3deg);padding:10px 34px 12px;border-radius:18px;background:linear-gradient(180deg,var(--slab1),var(--slab2) 55%,var(--slab3));box-shadow:0 6px 0 var(--slab-edge),0 22px 50px var(--goldglow),inset 0 2px 0 rgba(255,255,255,.7);text-align:center;max-width:100%}
+.slab b{display:block;font:900 clamp(34px,13vw,56px)/1 var(--round);letter-spacing:.14em;margin-right:-.14em;color:var(--on-slab);text-shadow:0 2px 0 var(--slab-shadow);text-transform:uppercase}
+.slab small{display:block;font-size:11px;font-weight:900;letter-spacing:.28em;color:var(--on-slab);margin-top:2px;margin-right:-.28em;text-transform:uppercase}
+[data-q=overpay] .slab{background:linear-gradient(180deg,#D5D8E8,#A9AFC8);box-shadow:0 4px 0 #6C7396,0 14px 30px rgba(0,0,0,.35)}
+[data-q=overpay] .slab small{color:#2A2E4A}
+[data-q=overpay] .flash{display:none}
+/* the gavel takes whatever height the rest of the moment leaves, so SOLD and Next are never clipped */
+.gvwrap{flex:1 1 0;min-height:96px;width:100%;container-type:size;display:grid;place-items:center;margin-top:-6px;max-height:300px}
+.gv{position:relative;aspect-ratio:520/370;width:min(360px,82vw,calc(100cqh * 1.405));flex:none;transform:translateX(7%)}
+.gvl{position:absolute;inset:0}
+.gvl svg{width:100%;height:100%;display:block;overflow:visible}
+.gvfx{position:absolute;inset:0;pointer-events:none}
+.ring{position:absolute;width:150px;height:30px;border-radius:50%;border:2px solid var(--gold1);box-shadow:0 0 22px var(--wood-glow);will-change:transform,opacity}
+.spark{position:absolute;width:6px;height:6px;border-radius:50%;background:var(--spark);box-shadow:0 0 10px var(--gold2);will-change:transform,opacity}
+.dust{position:absolute;width:30px;height:22px;border-radius:50%;background:rgba(190,150,90,.4);filter:blur(5px)}
+.soldline{text-align:center;margin-top:0;max-width:100%}
+.soldline .who{display:flex;align-items:center;gap:10px;justify-content:center;font-size:21px;font-weight:800;letter-spacing:-.03em;flex-wrap:wrap}
+.soldline .who .orb{--orb:40px}
+.deal{display:inline-flex;gap:8px;align-items:center;margin-top:10px;font-size:13px;font-weight:800;color:var(--on-gold);background:linear-gradient(180deg,var(--gold1),var(--gold2));padding:7px 14px;border-radius:16px;box-shadow:0 8px 24px var(--goldglow);max-width:100%;text-align:center}
+.soldline .fact{font-size:13px;line-height:1.35;color:var(--ink2);max-width:min(34ch,86vw);margin:8px auto 0;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:3;line-clamp:3;overflow:hidden}
+.deal.q-fair{background:var(--glass2);color:var(--ink);box-shadow:none;border:1px solid var(--stroke)}
+.deal.q-overpay{background:#5F688D;color:#fff;box-shadow:none}
+.tray{margin-top:16px;display:flex;align-items:center;gap:10px;padding:10px 14px;border-radius:22px;max-width:100%;flex-wrap:wrap;justify-content:center}
+.tray .lbl{font-size:12px;font-weight:700;color:var(--ink2);margin-right:4px}
+.mini{width:40px;height:40px;border-radius:50%;background:var(--glass2);border:1px solid var(--stroke);display:grid;place-items:center;font-size:22px}
+.mini .ibadge{font-size:.5em}
+.mini.new{display:grid;border:1.5px dashed var(--gold1);background:var(--goldtint)}
+.fly{position:absolute;left:50%;top:36%;margin:-31px 0 0 -31px;width:62px;height:62px;border-radius:50%;background:radial-gradient(circle at 35% 28%,rgba(255,255,255,.4),rgba(255,255,255,.1));border:2px solid var(--gold1);display:grid;place-items:center;font-size:36px;box-shadow:0 0 30px var(--wood-glow);z-index:5;visibility:hidden;will-change:transform}
+.nextbtn{position:relative;min-width:220px;margin-top:16px;opacity:0;pointer-events:none;transform:translateY(18px) scale(.94);transition:opacity .22s ease-out,transform .32s cubic-bezier(.2,.9,.3,1)}
+.overlay.ready .nextbtn,.overlay.final .nextbtn{opacity:1;pointer-events:auto;transform:none}
+.skiphint{font-size:12px;color:var(--ink2);margin-top:8px;font-weight:600}
+.confetti{position:absolute;inset:0;pointer-events:none;overflow:hidden;z-index:4;contain:strict}
+.cf{position:absolute;top:0;width:8px;height:14px;border-radius:2px}
+
+/* ---------- RESULTS ---------- */
+.win{flex:none;position:relative;text-align:center;padding:12px 16px 14px;overflow:hidden}
+.win::before{content:"";position:absolute;inset:0;background:radial-gradient(70% 90% at 50% 0%,var(--goldglow),transparent 72%);opacity:.7}
+.win .crown{font-size:22px;position:relative;line-height:1}
+.win h2{font:800 30px/1.1 var(--round);letter-spacing:-.045em;position:relative;margin-top:2px;overflow-wrap:anywhere}
+.win .pts{font:900 58px/1 var(--round);letter-spacing:-.05em;position:relative;font-variant-numeric:tabular-nums}
+.win .pts small{font-size:15px;font-weight:700;letter-spacing:0;margin-left:5px;color:var(--ink2);-webkit-text-fill-color:var(--ink2)}
+.win p{font-size:13px;color:var(--ink2);position:relative;margin-top:4px}
+.win p b{color:var(--ink)}
+.win.final{border-color:var(--gold1)}
+.lb{flex:none;display:flex;flex-direction:column;gap:8px;padding:12px 14px;border-radius:24px}
+.lbr{display:flex;align-items:center;gap:10px;margin-top:2px}
+.lbr .o{width:34px;height:34px;font-weight:800;font-size:14px}
+.lbr .n{font-weight:700;font-size:16px;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.lbr .p{font:800 19px/1 var(--round);letter-spacing:-.03em;font-variant-numeric:tabular-nums}
+.fl{display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+.f1{display:flex;flex:1 1 30%;min-width:104px;justify-content:center;align-items:center;gap:5px;background:var(--glass);border:1px solid var(--stroke);border-radius:15px;padding:3px 7px 3px 3px;font-size:12px;white-space:nowrap;font-weight:600;font-variant-numeric:tabular-nums}
+.f1 em{font-style:normal;font-size:15px;width:22px;height:22px;border-radius:50%;display:grid;place-items:center;background:var(--glass2);overflow:hidden}
+.f1 em .ibadge{font-size:9px}
+.f1 s{text-decoration:none;color:var(--ink2);font-weight:500}
+.redact{display:inline-block;height:11px;width:40px;border-radius:6px;background:repeating-linear-gradient(135deg,var(--ink2) 0 3px,transparent 3px 6px);vertical-align:-1px;cursor:pointer;box-sizing:content-box;padding:10px 4px;margin:-10px -4px;background-clip:content-box;font:inherit;color:inherit}
+.redact.open{background:none;width:auto;height:auto;color:inherit;font-weight:700;padding:0;margin:0;vertical-align:baseline;cursor:default}
+.gl{flex:1 1 0;min-height:110px;position:relative;overflow:hidden;border-radius:26px;display:flex;flex-direction:column;justify-content:flex-end;padding:0}
+.gl .globe{position:relative;width:calc(100% - 40px);margin:0 auto;min-height:120px;background:transparent}
+.gl .globe canvas{display:block;width:100%;height:auto;touch-action:none;overscroll-behavior:contain;cursor:grab}
+.gl .globe canvas:active{cursor:grabbing}
+.gl .cap{position:relative;z-index:2;padding:6px 16px 12px;font-size:12.5px;color:var(--ink2);font-weight:600}
+.gl .cap b{display:block;color:var(--ink);font-size:16px;font-weight:800}
+.gl .gph{--hp:30px;display:block;box-sizing:content-box;padding:var(--hp);margin:calc(8px - var(--hp)) auto calc(0px - var(--hp));width:min(230px,62%);aspect-ratio:1;background:radial-gradient(closest-side,var(--halo1) 58%,var(--halo2) 80%,var(--halo0) 100%)}
+.chips{display:flex;flex-wrap:wrap;gap:6px;padding:0 14px 10px}
+.chip{display:inline-flex;align-items:center;gap:5px;font-size:12px;font-weight:600;background:var(--glass);border:1px solid var(--stroke);border-radius:14px;padding:3px 10px 3px 6px}
+.acts{display:grid;grid-template-columns:1fr 1.4fr;gap:10px;flex:none}
+.acts .wide{grid-column:1/3}
+.celebrating .glass,.celebrating .ibtn{-webkit-backdrop-filter:none;backdrop-filter:none}
+
+/* the live globe's country labels and its loading note */
+.glabel{position:absolute;transform:translate(-50%,-50%);pointer-events:none;white-space:nowrap;font:700 11px/1.25 var(--font);letter-spacing:.02em;color:#F5F6FF;padding:2px 8px;border-radius:10px;background:rgba(10,10,24,.78);border:1px solid rgba(231,190,98,.6);opacity:0;transition:opacity .25s}
+.glabel .pv{color:#F6D993;margin-left:6px;font-variant-numeric:tabular-nums}
+.gload{position:absolute;left:0;right:0;top:50%;transform:translateY(-50%);text-align:center;font-size:12px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--ink2)}
+.gl .globe{overflow:hidden}
+
+/* ---------- online panels (switched off, but must still render) ---------- */
+.panel{flex:none;padding:16px;border-radius:24px;display:flex;flex-direction:column;gap:10px}
+.panel h2{font:800 26px/1.1 var(--round);letter-spacing:-.035em}
+.panel p{font-size:14px;color:var(--ink2);line-height:1.45}
+.code{font:800 44px/1 var(--mono);letter-spacing:.16em;text-align:center;padding:6px 0}
+.handle{font:700 19px/1.2 var(--mono)}
+.line{display:flex;justify-content:space-between;gap:10px;font-size:14px}
+
+/* ---------- reduced motion: nothing moves, nothing blurs heavily ---------- */
+@media (prefers-reduced-motion: reduce){
+  *,*::before,*::after{animation-duration:.001ms!important;animation-iteration-count:1!important;transition-duration:.001ms!important;scroll-behavior:auto!important}
+  .rays,.confetti{display:none}
+}
+/* the same, when Settings > Reduce motion is on */
+html[data-motion=reduce] *,html[data-motion=reduce] *::before,html[data-motion=reduce] *::after{animation-duration:.001ms!important;animation-iteration-count:1!important;transition-duration:.001ms!important;scroll-behavior:auto!important}
+html[data-motion=reduce] .rays,html[data-motion=reduce] .confetti{display:none}
+
+/* ---------- LARGE: iPad and anything at least 760 x 520 ---------- */
+@media (min-width:760px) and (min-height:520px){
+  :root{--padx:24px}
+  .screen{max-width:1040px}
+  h1.title{font-size:58px}
+  .menu-grid{display:grid;grid-template-columns:1fr 440px;gap:40px;flex:1;min-height:0;align-items:center}
+  .m-l,.m-r{display:flex;flex-direction:column;gap:14px;position:relative}
+  .hero{display:flex;flex-direction:column}
+  .hero img.globe{position:relative;right:auto;top:auto;width:clamp(200px,38dvh,360px);height:auto;aspect-ratio:1;margin:calc(6px - var(--hp)) calc(0px - var(--hp)) calc(0px - var(--hp)) calc(0px - var(--padx));display:block}   /* the halo box starts exactly at the screen's left edge: .screen is a scroll container and would cut a glow that crossed it (the hard line seen on iPad) */
+    .packs{margin:0;padding:2px 0 4px;flex-wrap:wrap;overflow:visible}
+  .dockbar{margin-top:6px}
+  .aud{display:grid;grid-template-columns:1fr 420px;gap:34px;flex:1;min-height:0;align-items:center}
+  .aud-l,.aud-r{display:flex;flex-direction:column;gap:12px}
+  .orbs{grid-template-columns:repeat(2,1fr);gap:16px 6px;padding-top:20px}
+  .dock{margin:0;border-radius:28px;border:1px solid var(--stroke);padding:16px}
+  .stage{flex:none;container-type:normal}
+  .ringwrap{--ring:clamp(170px,calc(100dvh - 420px),280px)}
+  .gvwrap{max-height:340px}
+  .gv{width:min(430px,calc(100cqh * 1.405))}
+  .res2{display:grid;grid-template-columns:1fr 1fr;gap:18px;flex:1;min-height:0;align-items:center}
+  .r-l,.r-r{display:flex;flex-direction:column;gap:12px;min-height:0}
+  .gl{min-height:0}
+  .gl .globe{flex:none;width:min(100%,calc(100dvh - 500px));min-width:220px;margin:0 auto}
+  .sheetbox{border-radius:30px;margin-bottom:5vh;border-bottom:1px solid var(--stroke)}
+  .sheetwrap{align-items:flex-end}
+}
+
+/* ---------- SHORT LANDSCAPE: phones on their side ---------- */
+@media (orientation:landscape) and (max-height:519px){
+  :root{--padx:20px}
+  .screen{max-width:900px}
+  .stage{flex:none;container-type:normal}
+  .ringwrap{--ring:clamp(104px,calc(100dvh - var(--top) - var(--bot) - 190px),170px)}
+  .menu-grid{display:grid;grid-template-columns:1fr 1fr;gap:20px;align-items:start}
+  .m-l,.m-r{display:flex;flex-direction:column;gap:10px}
+  .hero img.globe{--hp:30px;width:150px;height:150px;right:calc(-30px - var(--hp));top:calc(-20px - var(--hp))}
+    .aud{display:grid;grid-template-columns:1fr 1fr;gap:22px;flex:1;min-height:0;align-items:center}
+  .aud-l,.aud-r{display:flex;flex-direction:column;gap:8px;min-height:0}
+  .cname{font-size:24px}
+  .head .orb{--orb:36px}
+  .orbs{padding-top:18px}
+  .po .o{width:44px;height:44px;font-size:17px}
+  .dock{margin:0;border-radius:24px;border:1px solid var(--stroke);padding:10px;gap:8px}
+  .rb{width:46px;height:46px;font-size:15px}
+  .dock .btn,.dock input.in{min-height:44px}
+  .res2{display:grid;grid-template-columns:1fr 1fr;gap:14px;align-items:start}
+  .r-l,.r-r{display:flex;flex-direction:column;gap:10px}
+  .sheetbox{max-height:96%}
+  .gvwrap{max-height:none;min-height:0;height:100%}
+  .overlay{display:grid;grid-template-columns:1fr 1fr;grid-template-rows:auto 1fr auto;column-gap:20px;align-content:center;justify-items:center;align-items:center;padding-left:max(20px,env(safe-area-inset-left,0px));padding-right:max(20px,env(safe-area-inset-right,0px))}
+  .plate{grid-column:1;grid-row:1}
+  .gvwrap{grid-column:1;grid-row:2}
+  .soldline{grid-column:2;grid-row:1}
+  .tray{grid-column:2;grid-row:2;margin:6px 0}
+  .nextbtn{grid-column:2;grid-row:3;margin:6px 0 0}
+  .slab b{font-size:40px}
+}
+
+/* ---------- US results map (us-view.js) ---------- */
+.gl-us{justify-content:flex-start}
+.usm{position:relative;width:calc(100% - 28px);margin:12px auto 4px;overflow:hidden;border-radius:16px;background:transparent}
+.usm svg{display:block;width:100%;height:100%}
+.gl-us .gph{display:block;box-sizing:border-box;padding:0;background:none;width:100%;aspect-ratio:1200/740;margin:0;filter:none;border-radius:16px;object-fit:cover}
+.usm.still .um-wins>g{animation:none}
+.um-dim{fill:var(--map-dim)}
+.um-b path{fill:none;stroke:var(--map-line);stroke-width:1;stroke-linejoin:round;vector-effect:non-scaling-stroke}
+.um-win{fill:var(--map-win);stroke:var(--map-edge);stroke-width:2;stroke-linejoin:round;vector-effect:non-scaling-stroke}
+.um-glow{fill:none;stroke:var(--map-glow);stroke-width:7;stroke-linejoin:round;opacity:.55;vector-effect:non-scaling-stroke}
+.um-wins>g{animation:um-in .55s ease-out both}
+@keyframes um-in{from{opacity:0}to{opacity:1}}
+.um-pin{fill:var(--map-pin);stroke:var(--map-pin-ring);stroke-width:1.5;vector-effect:non-scaling-stroke}
+.um-lead{fill:none;stroke:var(--map-pin);stroke-width:1.3;opacity:.85;vector-effect:non-scaling-stroke}
+.um-frame{fill:var(--map-dim);stroke:var(--map-line);stroke-width:1.2;vector-effect:non-scaling-stroke}
+.um-l{z-index:2;opacity:1}
+.um-c{font-size:10px;padding:1px 6px;line-height:1.3}
+@media (prefers-reduced-motion:reduce){.um-wins>g{animation:none}}
+
+.logta{width:100%;min-height:150px;background:var(--glass);color:var(--ink);border:1px solid var(--stroke);border-radius:14px;padding:10px;font:12px/1.35 ui-monospace,Menlo,monospace;resize:none}
+
+/* ============ PROJECT X — the game's own pieces, on the Bidding Wars tokens ============ */
+/* clue list in the dock */
+.pxclues{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:7px;max-height:min(36vh,300px);overflow:auto;text-align:left}
+.pxclues li{display:grid;grid-template-columns:28px 1fr;gap:10px;align-items:start;padding:10px 12px;border-radius:16px;background:var(--glass);border:1px solid var(--stroke);font-size:15.5px;line-height:1.35}
+.pxclues .n{width:28px;height:28px;border-radius:50%;display:grid;place-items:center;font:800 13px/1 var(--round);background:var(--glass2);color:var(--ink2)}
+.pxclues li.cur{border-color:var(--gold1);background:var(--goldtint)}
+.pxclues li.cur .n{background:linear-gradient(180deg,var(--gold1),var(--gold2));color:var(--on-gold)}
+.pxclues li.later{opacity:.5;padding-block:7px;font-size:13px;color:var(--ink2)}
+.pxclues li.cur{animation:pxrise .45s cubic-bezier(.2,.9,.3,1.15)}
+@keyframes pxrise{from{transform:translateY(8px);opacity:0}}
+/* name suggestions, above the field */
+.pxsugg{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:4px}
+.pxsugg:empty{display:none}
+.pxsugg button{width:100%;min-height:46px;text-align:left;padding:0 14px;border-radius:14px;border:1px solid var(--stroke);background:var(--glass2);color:var(--ink);font:600 16px/1 var(--font)}
+.pxsugg button small{color:var(--ink2);font-weight:400;margin-left:8px}
+.pxsugg button[aria-selected=true]{border-color:var(--gold1)}
+.dock #cus{text-transform:none}
+/* the drawing canvas */
+.pxdrawstage{justify-content:center}
+.pxcanvas{position:relative;border-radius:26px;overflow:hidden;background:var(--glass);border:1px solid var(--stroke);box-shadow:var(--shadow),inset 0 1px 0 var(--hi);touch-action:none}
+.pxcanvas canvas{display:block;touch-action:none}
+.pxnorth{position:absolute;top:10px;left:50%;transform:translateX(-50%);font-size:10px;font-weight:800;letter-spacing:.18em;color:var(--ink2);pointer-events:none}
+.pxempty{position:absolute;inset:0;display:grid;place-items:center;color:var(--ink2);font-size:15px;pointer-events:none;padding:20px;text-align:center}
+.pxdrawhead{display:flex;align-items:center;gap:12px;text-align:left}
+.pxdrawhead .orb{--orb:46px}
+.pxdrawhead h2{margin:2px 0 0;font-size:clamp(24px,3.4vw,34px);letter-spacing:-.03em}
+.pxbar{height:6px;border-radius:3px;background:var(--track);overflow:hidden}
+.pxbar i{display:block;height:100%;width:100%;transform-origin:left;background:linear-gradient(90deg,var(--gold2),var(--gold1))}
+.pxbar i.warn{background:var(--danger-accent)}
+/* the reveal moment */
+.pxreveal .pxovwrap{width:min(440px,72vw,40vh);aspect-ratio:1;position:relative}
+.pxov{width:100%;height:100%;overflow:visible}
+.pxmine{fill:color-mix(in srgb,var(--ink) 8%,transparent);stroke:var(--ink);stroke-width:2.5;stroke-linejoin:round;stroke-linecap:round;vector-effect:non-scaling-stroke}
+.pxreal{fill:color-mix(in srgb,var(--gold1) 22%,transparent);stroke:var(--gold1);stroke-width:3;stroke-linejoin:round;vector-effect:non-scaling-stroke;filter:drop-shadow(0 0 8px var(--goldglow))}
+.pxreal.trace{stroke-dasharray:1;stroke-dashoffset:1;fill-opacity:0;animation:pxtrace 1.1s cubic-bezier(.6,0,.3,1) forwards,pxglow .5s 1s ease-out forwards}
+@keyframes pxtrace{to{stroke-dashoffset:0}}
+@keyframes pxglow{to{fill-opacity:1}}
+.pxplate{margin-top:10px}
+.pxplate b{letter-spacing:.02em;margin-right:0;text-transform:none}
+.pxplate small{display:block;font-size:11px;font-weight:800;letter-spacing:.28em;color:var(--on-slab);opacity:.85}
+.pxreveal .soldline{margin-top:12px}
+.pxbest .pxbestsvg{width:min(100%,220px);aspect-ratio:1;margin:6px auto 0}
+.chip b.num{font-weight:800;margin-left:4px}
+@media (max-height:640px){.pxreveal .pxovwrap{width:min(300px,34vh)}}
+.pxreveal .rays,.pxreveal .scrim{pointer-events:none}
+.pxreveal .nextbtn{z-index:2}
+/* hand-off and round-end cards: centred on the screen */
+.pxcenter{flex:1;min-height:0;display:flex;align-items:center;justify-content:center;padding:8px 0 calc(var(--bot) + 8px)}
+.pxcard{width:min(620px,100%);padding:26px 26px 24px;display:flex;flex-direction:column;align-items:center;gap:8px}
+.pxcard>*{position:relative}
+.pxcard .crown{font-size:44px}
+.pxcard h2{font-size:clamp(34px,6vw,52px)}
+.pxcard p{font-size:15px;max-width:46ch}
+.pxcard .taunt.fact{font-size:15px;max-height:none;-webkit-line-clamp:unset;line-clamp:unset}
+.pxcard .btn{min-width:240px;margin-top:8px}
+.pxcard .o{border-radius:50%;display:grid;place-items:center;font-weight:800;color:#fff;border:2px solid rgba(255,255,255,.35)}
+/* the drawing screen: the canvas side takes all the height there is */
+.aud.pxdraw{align-items:stretch}
+.aud.pxdraw .aud-l{flex:1 1 auto;min-height:0;display:flex}
+.aud.pxdraw .aud-r{align-self:center}
+.aud.pxdraw .pxdrawstage{flex:1 1 auto;min-height:200px}
