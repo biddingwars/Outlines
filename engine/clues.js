@@ -11,8 +11,9 @@
 //   any     array fact contains at least one value in the list
 //   count   array fact has exactly this many entries
 //   in      scalar fact is one of the listed values
+//   same    array fact holds exactly the listed values (any order)
 
-export const OPS = ['eq', 'ne', 'has', 'lacks', 'all', 'any', 'count', 'in'];
+export const OPS = ['eq', 'ne', 'has', 'lacks', 'all', 'any', 'count', 'in', 'same'];
 
 export function opOf(test) {
   return OPS.find((op) => op in test) ?? null;
@@ -46,6 +47,8 @@ export function evalTest(test, facts) {
       return !!arr && Array.isArray(x) && x.some((e) => arr.includes(e));
     case 'count':
       return !!arr && arr.length === x;
+    case 'same':
+      return !!arr && Array.isArray(x) && arr.length === x.length && x.every((e) => arr.includes(e));
     default:
       return undefined;
   }

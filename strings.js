@@ -1621,4 +1621,22 @@ const STRX4 = {
  }
 };
 Object.keys(STRX4).forEach(l => Object.assign(STR[l], STRX4[l]));
+const STRX5 = {
+ "en": {
+  "youWin": "You win"
+ },
+ "de": {
+  "youWin": "Du gewinnst"
+ },
+ "it": {
+  "youWin": "Hai vinto"
+ },
+ "es": {
+  "youWin": "Has ganado"
+ },
+ "fr": {
+  "youWin": "Tu as gagné"
+ }
+};
+Object.keys(STRX5).forEach(l => Object.assign(STR[l], STRX5[l]));
 const STRP = {};

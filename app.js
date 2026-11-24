@@ -803,7 +803,7 @@ async function reveal(sec, res, REC) {
   const v = $('#verdict', sec);
   v.classList.add('final');
   v.innerHTML = `<div class="crown" aria-hidden="true">${tie ? '🤝' : top.kind === 'bot' ? '🤖' : '👑'}</div>
-    <h2>${tie ? esc(t('tie')) : t('takesIt', { name: esc(top.name) })}</h2>
+    <h2>${tie ? esc(t('tie')) : top.kind === 'human' && G.config.seats.filter(x => x.kind === 'human').length === 1 ? esc(t('youWin')) : t('takesIt', { name: esc(top.name) })}</h2>
     <div class="pts goldtext num" aria-hidden="true"><span class="v" data-n="${top.total}">${FX.reduced ? fmtN(top.total) : '0'}</span><small>${esc(t('points'))}</small></div>
     <p>${res.seats.filter(s => s !== top).map(s => `<b>${esc(s.name)}</b> ${fmtN(s.total)}`).join(' · ')}</p>
     <p>${res.seats.map(s => `${esc(s.name)} ${Math.round(s.avgAccuracy * 100)}%`).join(' · ')} ${esc(t('avgAcc'))}</p>`;

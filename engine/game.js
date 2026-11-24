@@ -13,7 +13,7 @@
 import { createRng, deriveSeed, toSeed } from './rng.js';
 import { judge } from './judge.js';
 import { resolve } from './names.js';
-import { poolFor, CLUES_PER_ITEM } from './pack.js';
+import { poolFor, pickClues, CLUES_PER_ITEM } from './pack.js';
 import { DEFAULT_RULES, basePointsFor, multiplierFor, roundScore, validateCurve } from './scoring.js';
 import { TEMPERAMENTS, decide, moodFor, rollKnowledge, rollSkill, sketch, line } from './bot.js';
 
@@ -83,6 +83,9 @@ export function createGame(pack, config) {
   const cfg = normalizeConfig(pack, config);
   const rng = createRng(cfg.seed, 'setup');
   const places = rng.fork('places').shuffle(poolFor(pack, cfg.difficulty)).slice(0, cfg.rounds);
+  // Which five clues each round shows: one per tier, drawn from the place's pool,
+  // so the same place reads differently from game to game.
+  const clueSets = places.map((id, r) => pickClues(pack.byId.get(id), rng.fork('clues', r)));
   // Each bot gets a different hidden temperament.
   const temps = rng.fork('temperaments').shuffle(Object.keys(TEMPERAMENTS));
   const bots = {};
@@ -98,6 +101,7 @@ export function createGame(pack, config) {
     v: 1,
     config: cfg,
     places,
+    clueSets,
     bots,
     round: 0,
     phase: 'clue',
@@ -155,7 +159,7 @@ export function botView(pack, state, clueIndex, wrong) {
   return {
     clueIndex,
     lastClue: clueIndex === CLUES_PER_ITEM - 1,
-    tests: item.clues.slice(0, clueIndex + 1).map((c) => c.test),
+    tests: state.clueSets[state.round].slice(0, clueIndex + 1).map((k) => item.clues[k].test),
     wrong: wrong.slice(),
     candidates: poolFor(pack, state.config.difficulty)
       .filter((id) => !played.has(id))
@@ -348,7 +352,7 @@ export function revealedClues(pack, state, lang = 'en') {
   if (!t || state.phase === 'handoff') return [];
   const item = pack.byId.get(state.places[state.round]);
   const upto = state.phase === 'clue' ? t.clue : t.solvedAt ?? CLUES_PER_ITEM - 1;
-  return item.clues.slice(0, upto + 1).map((c) => c.text[lang] ?? c.text.en);
+  return state.clueSets[state.round].slice(0, upto + 1).map((k) => item.clues[k].text[lang] ?? item.clues[k].text.en);
 }
 
 /**

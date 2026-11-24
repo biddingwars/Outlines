@@ -26,6 +26,13 @@ outlines), `tools/`, `tests/`, `docs/`. The game never references them.
 `const CACHE = 'project-x-v1'` and `CONFIG.version` in `platform.js` must move
 together (the test checks). Without the bump, installed apps never see the change.
 
+## Clues
+Each place has a pool of clues in 5 tiers (1 = hardest, 5 = gives it away); the World
+pack has 20 per country, 4 per tier. Each round draws one per tier (`pickClues`, seeded),
+so a place reads differently every game. Every tier-5 clue must identify its place on its
+own (the validator checks). World clues: `packs/world/clues-*.js`, templates and their
+words in five languages: `packs/world/templates.js`.
+
 ## House rules carried over
 - No network at runtime; every asset bundled; no CDN, no remote code.
 - Privacy: no accounts, analytics or SDKs. Stored on device only: `lang:v1`,

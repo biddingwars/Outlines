@@ -201,3 +201,19 @@ test('ties share a rank and are broken by average accuracy', () => {
   assert.deepEqual(res.winners, [0, 1]);
   assert.deepEqual(res.ranking.map((r) => r.rank), [1, 1]);
 });
+
+test('each round shows one clue per tier, hardest first, drawn afresh each game', () => {
+  const seen = new Map();
+  for (let seed = 0; seed < 40; seed++) {
+    const s = createGame(world, solo({ seed }));
+    s.places.forEach((id, r) => {
+      const idx = s.clueSets[r];
+      assert.deepEqual(idx.map((k) => world.byId.get(id).clues[k].tier), [1, 2, 3, 4, 5]);
+      if (!seen.has(id)) seen.set(id, new Set());
+      seen.get(id).add(idx.join(','));
+    });
+  }
+  // A place that came up several times was not read with the same five clues every time.
+  const repeats = [...seen.values()].filter((v) => v.size > 1);
+  assert.ok(repeats.length >= 10, `only ${repeats.length} places varied`);
+});
