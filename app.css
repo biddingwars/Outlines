@@ -649,3 +649,44 @@ html[data-motion=reduce] .rays,html[data-motion=reduce] .confetti{display:none}
    then the cost note, so the timer ring and the clock never overlap the seats. */
 @container (max-height: 300px) { .stage > .head { display: none } }
 @container (max-height: 230px) { .stage > .taunt { display: none } }
+
+/* ---------- polish: motion and small layout fixes (Reduce motion turns all of this off, above) ---------- */
+.btn,.mode,.chipbtn,.pack,.recpill{transition:transform .18s cubic-bezier(.3,1.4,.5,1),box-shadow .2s,filter .2s}
+@media (hover:hover){
+  .btn:hover:not(:disabled),.mode:hover,.chipbtn:hover,.recpill:hover{filter:brightness(1.08)}
+  .btn.gold:hover:not(:disabled){box-shadow:0 12px 30px var(--goldglow),inset 0 1px 0 rgba(255,255,255,.55)}
+  .mode:hover .go{transform:translateX(3px)}
+}
+.mode .go{transition:transform .2s}
+.chipbtn{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}   /* "How to play" stayed on two lines on a phone */
+
+/* things arrive one after another instead of all at once */
+@keyframes pxin{from{opacity:0;transform:translateY(12px) scale(.98)}}
+@keyframes pxpop{0%{opacity:0;transform:scale(.4) rotate(-12deg)}60%{opacity:1;transform:scale(1.15) rotate(4deg)}100%{transform:none}}
+.screen[data-screen=menu] .m-r>*,.screen[data-screen=menu] .modes>*,
+.pxcard>*,.pxdraw .dock>*,
+#lb>*,#acts>*,#extra .chip,#extra>*{animation:pxin .5s cubic-bezier(.2,.9,.3,1.1) both}
+.screen[data-screen=menu] .m-r>:nth-child(2),.screen[data-screen=menu] .modes>:nth-child(2),.pxcard>:nth-child(2),.pxdraw .dock>:nth-child(2),#lb>:nth-child(2),#acts>:nth-child(2),#extra .chip:nth-child(2),#extra>:nth-child(2){animation-delay:.06s}
+.screen[data-screen=menu] .m-r>:nth-child(3),.screen[data-screen=menu] .modes>:nth-child(3),.pxcard>:nth-child(3),.pxdraw .dock>:nth-child(3),#lb>:nth-child(3),#extra .chip:nth-child(3),#extra>:nth-child(3){animation-delay:.12s}
+.screen[data-screen=menu] .m-r>:nth-child(4),.pxcard>:nth-child(4),.pxdraw .dock>:nth-child(4),#lb>:nth-child(4),#extra .chip:nth-child(4){animation-delay:.18s}
+.pxcard>:nth-child(5),.pxdraw .dock>:nth-child(5),#lb>:nth-child(n+5),#extra .chip:nth-child(n+5){animation-delay:.24s}
+.pxcard>:nth-child(6){animation-delay:.3s}
+.pxcard>:nth-child(n+7){animation-delay:.36s}
+.pxcard>.crown,.win.final>.crown{animation:pxpop .6s cubic-bezier(.2,.9,.3,1.2) both}
+#extra[hidden] *{animation:none}
+
+/* the last seconds: the clock pulses */
+@keyframes pxpulse{50%{transform:scale(1.12)}}
+.ringwrap.warn .secs{animation:pxpulse 1s ease-in-out infinite}
+.pxbar i.warn{animation:pxflash 1s ease-in-out infinite}
+@keyframes pxflash{50%{opacity:.55}}
+
+/* the drawing hint fades instead of blinking out */
+.pxempty{transition:opacity .25s}
+.pxempty[hidden]{display:grid;opacity:0}
+
+/* results: while the scores are sealed the board sits alone, centred */
+@media (min-width:760px) and (min-height:520px){
+  .res2:has(#extra[hidden]){grid-template-columns:minmax(0,520px);justify-content:center}
+  .res2:has(#extra[hidden]) .r-r{display:none}
+}

@@ -180,17 +180,33 @@ async function loadBorders(){
    Falls back to the drawn texture if it is missing. */
 const EARTH_TEXTURES=['earth.jpg'];
 
+/* The photo is fetched and decoded once, ahead of time (preloadGlobe, called while the
+   player is still lifting the score bars), so the results globe opens with it at once. */
+let EARTH_IMG=null;
+function loadEarthImage(){
+  if(EARTH_IMG) return EARTH_IMG;
+  EARTH_IMG=new Promise(res=>{
+    const img=new Image();
+    img.decoding='async';
+    img.onload=()=>{ (img.decode ? img.decode() : Promise.resolve()).catch(()=>{}).then(()=>res(img)); };
+    img.onerror=()=>res(null);
+    img.src=EARTH_TEXTURES[0];
+  });
+  return EARTH_IMG;
+}
+let EARTH_READY=null;   // the decoded image, once it has arrived
+function preloadGlobe(){
+  loadEarthImage().then(img=>{ EARTH_READY=img; });
+  loadBorders().catch(()=>{});
+}
+function earthTextureFrom(img){
+  const tex=new THREE.Texture(img);
+  tex.anisotropy=8; tex.needsUpdate=true;
+  return tex;
+}
 function loadEarthTexture(done){
-  if(!window.THREE || !THREE.TextureLoader){ done(null); return; }
-  const loader=new THREE.TextureLoader();
-  loader.setCrossOrigin('anonymous');
-  let i=0;
-  const next=()=>{
-    if(i>=EARTH_TEXTURES.length){ done(null); return; }
-    const url=EARTH_TEXTURES[i++];
-    loader.load(url, tex=>{ tex.anisotropy=8; done(tex); }, undefined, ()=>next());
-  };
-  next();
+  if(!window.THREE){ done(null); return; }
+  loadEarthImage().then(img=>done(img ? earthTextureFrom(img) : null));
 }
 
 const toVec=(lat,lon,r)=>{
@@ -347,12 +363,16 @@ function globe3d(host, owned, pack){
   scene.add(new THREE.Points(sg, new THREE.PointsMaterial({color:0xBFD4FF, size:0.075, sizeAttenuation:true, transparent:true, opacity:.8})));
 
   /* the planet */
-  const earthMat=new THREE.MeshPhongMaterial({map:earthTexture(), shininess:6, specular:0x101c2e, emissive:0x0A1424});
+  const ready=EARTH_READY;   // decoded ahead of time: no 2048-pixel fallback to paint first
+  const earthMat=ready
+    ? new THREE.MeshPhongMaterial({map:earthTextureFrom(ready), shininess:6, specular:0x0c1218, emissive:0x000000})
+    : new THREE.MeshPhongMaterial({map:earthTexture(), shininess:6, specular:0x101c2e, emissive:0x0A1424});
   const earth=new THREE.Mesh(new THREE.SphereGeometry(1,96,64), earthMat);
   rig.add(earth);
 
-  let satelliteOn=false;
-  loadEarthTexture(tex=>{
+  let satelliteOn=!!ready;
+  if(ready){ earthMat.shininess=15; }
+  else loadEarthTexture(tex=>{
     if(!tex) return;
     satelliteOn=true;
     const old=earthMat.map;
@@ -555,7 +575,10 @@ function globe3d(host, owned, pack){
       tmp.project(camera);
       const vw=host.clientWidth, vh=el.clientHeight||Math.round(vw*0.98);
       const x=(tmp.x*0.5+0.5)*vw, y=(-tmp.y*0.5+0.5)*vh;
-      L.d.style.left=x+'px'; L.d.style.top=y+'px';
+      // keep the whole label inside the card (it used to be cut off at the edges)
+      if(!L.w) L.w=L.d.offsetWidth;
+      const half=(L.w||0)/2+6;
+      L.d.style.left=Math.max(half, Math.min(vw-half, x))+'px'; L.d.style.top=Math.max(12, Math.min(vh-12, y))+'px';
       L.d.style.opacity = facing>0.35 ? Math.min(1,(facing-0.35)/0.25) : 0;
     });
 

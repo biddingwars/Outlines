@@ -801,6 +801,7 @@ function revealMoment() {
 /* ---- round end: what it was, a fact, the bots' one-liners; scores stay sealed ---- */
 function roundEnd() {
   const id = G.places[G.round], item = itemOf(id), last = G.round + 1 >= G.config.rounds;
+  if (last) setTimeout(preloadResults, 300);
   const lines = G.config.seats.map((s, i) => s.kind === 'bot' ? `<p class="taunt fact" style="height:auto"><b>${esc(s.name)}:</b> “${esc(Engine.botLine(PACK, G, G.round, i, 0, LANG))}”</p>` : '').join('');
   const sec = go(`${navGame(roundPill(), false)}
     <div class="pxcenter"><div class="glass win final pxcard">
@@ -811,6 +812,11 @@ function roundEnd() {
   bindGameNav();
   on('nx', () => { Snd.ui(); act({ type: 'continue' }); });
   return sec;
+}
+
+/* the results globe's photo and borders, fetched and decoded before they are needed */
+function preloadResults() {
+  if (PACK && PACK.id !== 'states' && typeof preloadGlobe === 'function') try { preloadGlobe(); } catch (e) {}
 }
 
 /* ============ RESULTS — no winner named until every bar is off (as in Bidding Wars) ============ */
@@ -832,6 +838,7 @@ async function recordGame(res) {
 function finish() {
   stopClock();
   saveGameLog('done');
+  preloadResults();
   const res = Engine.results(PACK, G), REC = recFor(PACK.id);
   const red = (v, label) => `<button type="button" class="redact" data-v="${esc(v)}" aria-label="${esc(label || t('hiddenValue'))}"></button>`;
   const order = res.seats.slice().sort((a, b) => b.total - a.total);
@@ -844,9 +851,9 @@ function finish() {
           <div class="lbr"><div class="o s${seatOf(r.seat)}" aria-hidden="true">${esc(ini(r.name))}</div><div class="n">${esc(r.name)}</div><div class="p">${red(fmtN(r.total), t('points') + ' · ' + r.name)}</div></div>
           <div class="fl">${r.rounds.map(x => { const it = itemOf(x.itemId); return `<span class="f1"><em aria-hidden="true">${icon(it)}</em><span class="sr">${esc(cname(it))}</span><span>${Math.round(x.accuracy * 100)}%</span><s>${red(fmtN(x.score), cname(it))}</s></span>`; }).join('')}</div>`).join('')}
         </div>
+        <div class="acts" id="acts"><button class="btn gold wide" id="rev">${esc(t('liftAll'))}</button></div>
       </div>
-      <div class="r-r"><div id="extra" hidden></div>
-        <div class="acts" id="acts"><button class="btn gold wide" id="rev">${esc(t('liftAll'))}</button></div></div>
+      <div class="r-r"><div id="extra" hidden></div></div>
     </div>`, 'results');
   on('nb', () => { Snd.ui(); home(); });
   const bars = $$('.redact', sec);
@@ -860,7 +867,29 @@ function finish() {
     if (opened === bars.length && !revealed) { revealed = true; setTimeout(() => reveal(sec, res, REC), 420); }
   };
   bars.forEach(b => b.onclick = () => lift(b));
+  const tokW = navTok;
+  setTimeout(() => (window.requestIdleCallback || (f => f()))(() => { if (tokW === navTok) buildWorld(sec, res); }, { timeout: 400 }), 450);
   on('rev', () => { let d = 0; bars.forEach(b => { if (!b.classList.contains('open')) setTimeout(() => lift(b), d += 70); }); $('#rev').disabled = true; });
+}
+
+/* The world card: every place played, lit by how well the first human drew it.
+   It is built while the scores are still sealed (the card stays hidden), from the photo
+   and borders preloaded at the end of the game, so it is there the moment the winner is
+   shown. It used to wait 2.4 s after the reveal and then load: about 4 s in all. */
+function buildWorld(sec, res) {
+  if (sec._world || !sec.isConnected) return;
+  sec._world = true;
+  const human = res.seats.find(s => s.kind === 'human') || res.seats[0];
+  const lots = res.places.map(p => Object.assign({}, itemOf(p.itemId), { value: Math.round((p.accuracy[human.seat] || 0) * 100) }));
+  const usMode = PACK.id === 'states' && window.USView;
+  const ex = $('#extra', sec);
+  ex.insertAdjacentHTML('afterbegin', `<div class="glass gl${usMode ? ' gl-us' : ''}">${usMode ? `<div class="usm" id="gl"><img class="gph" src="us-map.webp" alt="" decoding="async"></div>` : `<div class="globe" id="gl"></div>`}
+      <div class="cap"><b>${esc(t('worldTitle'))}</b>${esc(t('dragSpin'))}</div>
+      <div class="chips">${lots.map(b => `<span class="chip"><span aria-hidden="true">${icon(b)}</span> ${esc(cname(b))} <b class="num">${b.value}%</b></span>`).join('')}</div></div>`);
+  const host = $('#gl', sec);
+  if (usMode) { USView.render(host, lots, { reduced: FX.reduced, label: b => b.id, value: b => b.value + '%', aria: t('worldTitle') + ': ' + lots.map(cname).join(', ') }).catch(() => {}); return; }
+  if (stopGlobe) stopGlobe();
+  stopGlobe = globe(host, lots, { items: PACK.items, metric: { format: v => v + '%' }, globe: {} });
 }
 
 async function reveal(sec, res, REC) {
@@ -886,29 +915,19 @@ async function reveal(sec, res, REC) {
   step(260, () => {
     if (win && !tie) { PACK.id === 'states' ? Snd.eagle() : Snd.fanfare(); Haptics.success(); FX.confetti(sec, 22); } else { Snd.sting(); Haptics.warning(); }
   });
-  /* the world card: every place played, lit by how well the first human drew it; the best drawing of the game */
-  const human = res.seats.find(s => s.kind === 'human');
-  const lots = res.places.map(p => Object.assign({}, itemOf(p.itemId), { value: Math.round((p.accuracy[human.seat] || 0) * 100) }));
+  /* the best drawing of the game and the record join the world card, which is already built */
   const best = res.best;
   const recHtml = outcome ? `<div class="glass recpill" style="padding:8px 14px;order:0"><div class="big num" style="font-size:24px">${REC.won}<i>–</i>${REC.lost}${REC.drawn ? `<i>–</i>${REC.drawn}` : ''}</div><div class="m"><b>${esc(outcome.record ? t('newRecord') : t('record'))}</b><br>${REC.played} ${esc(t('games'))}${REC.streak ? ` · ${esc(t('streak'))} ${REC.streak > 0 ? '+' : ''}${REC.streak}` : ''}</div></div>` : res.practice ? `<div class="glass recpill" style="padding:8px 14px;order:0"><div class="m"><b>${esc(t('practiceTitle'))}</b><br>${esc(t('practiceNote'))}</div></div>` : '';
-  const usMode = PACK.id === 'states' && window.USView;
   const ex = $('#extra', sec);
-  ex.innerHTML = `<div class="glass gl${usMode ? ' gl-us' : ''}">${usMode ? `<div class="usm" id="gl"><img class="gph" src="us-map.webp" alt="" decoding="async"></div>` : `<div class="globe" id="gl"><img class="gph" src="globe-hero.webp" alt="" decoding="async"></div>`}
-      <div class="cap"><b>${esc(t('worldTitle'))}</b>${esc(t('dragSpin'))}</div>
-      <div class="chips">${lots.map(b => `<span class="chip"><span aria-hidden="true">${icon(b)}</span> ${esc(cname(b))} <b class="num">${b.value}%</b></span>`).join('')}</div></div>
-    ${best && best.rings && best.rings.length ? `<div class="glass gl pxbest"><div class="cap"><b>${esc(t('best'))}</b>${esc(G.config.seats[best.seat].name)} · ${esc(nameOf(best.itemId))} · ${Math.round(best.accuracy * 100)}%</div><div class="pxbestsvg">${overlaySvg({ rings: best.rings, fit: best.fit }, best.itemId, false)}</div></div>` : ''}${recHtml}`;
-  step(520, () => { ex.hidden = false; if (!FX.reduced) FX.spring(ex, 0, 1, x => ({ transform: `translateY(${(1 - x) * 18}px)`, opacity: Math.min(1, x * 1.6) }), { k: 200, c: 18 }); });
-  step(2400, () => {
-    rootEl.classList.remove('celebrating');
-    const host = $('#gl', sec); if (!host) return;
-    if (usMode) { USView.render(host, lots, { reduced: FX.reduced, label: b => b.id, value: b => b.value + '%', aria: t('worldTitle') + ': ' + lots.map(cname).join(', ') }).catch(() => {}); return; }
-    const mount = () => {
-      if (tok !== navTok) return;
-      const ph = $('.gph', host); if (ph) ph.remove();
-      if (stopGlobe) stopGlobe();
-      stopGlobe = globe(host, lots, { items: PACK.items, metric: { format: v => v + '%' }, globe: {} });
-    };
-    (window.requestIdleCallback || (f => setTimeout(f, 60)))(mount, { timeout: 700 });
+  buildWorld(sec, res);
+  ex.insertAdjacentHTML('beforeend', `${best && best.rings && best.rings.length ? `<div class="glass gl pxbest"><div class="cap"><b>${esc(t('best'))}</b>${esc(G.config.seats[best.seat].name)} · ${esc(nameOf(best.itemId))} · ${Math.round(best.accuracy * 100)}%</div><div class="pxbestsvg">${overlaySvg({ rings: best.rings, fit: best.fit }, best.itemId, !FX.reduced)}</div></div>` : ''}${recHtml}`);
+  step(380, () => {
+    ex.hidden = false;
+    if (FX.reduced) return;
+    FX.spring(ex, 0, 1, x => ({ transform: `translateY(${(1 - x) * 22}px)`, opacity: Math.min(1, x * 1.6) }), { k: 190, c: 18 });
+    const cv = $('#gl canvas', sec);
+    if (cv) cv.animate([{ transform: 'scale(.82) rotate(-8deg)', opacity: 0 }, { transform: 'none', opacity: 1 }], { duration: 900, easing: 'cubic-bezier(.2,.9,.25,1)' });
   });
+  step(2000, () => rootEl.classList.remove('celebrating'));
   if (FX.reduced) rootEl.classList.remove('celebrating');
 }
