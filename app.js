@@ -14,8 +14,7 @@ const $ = (s, r) => (r || document).querySelector(s);
 const $$ = (s, r) => [...(r || document).querySelectorAll(s)];
 const cname = it => (it.names && (it.names[LANG] || it.names.en)) || it.id;
 const flag = code => code.split('').map(ch => String.fromCodePoint(0x1F1E6 + ch.charCodeAt(0) - 65)).join('');
-const ISO2 = { PRT: 'PT', ESP: 'ES', FRA: 'FR', ITA: 'IT', DEU: 'DE', GBR: 'GB', IRL: 'IE', NOR: 'NO', GRC: 'GR', EGY: 'EG', ZAF: 'ZA', KEN: 'KE', IND: 'IN', CHN: 'CN', JPN: 'JP', AUS: 'AU', BRA: 'BR', ARG: 'AR', CHL: 'CL', MEX: 'MX' };
-function icon(it) { return ISO2[it.id] ? flag(ISO2[it.id]) : `<span class="ibadge">${esc(it.id)}</span>`; }
+function icon(it) { return it.iso2 ? flag(it.iso2) : `<span class="ibadge">${esc(it.id)}</span>`; }
 let SELPACK = DEFAULT_PACK;                         // the pack picked on the menu
 const ini = n => { const t = String(n || '?').trim(), m = t.match(/^(.*\S)\s+(\d)$/); return ((Array.from(m ? m[1] : t)[0] || '?') + (m ? m[2] : '')).toUpperCase(); };
 const IC = (id, cls) => `<svg class="i ${cls || ''}" aria-hidden="true" focusable="false"><use href="#i-${id}"/></svg>`;

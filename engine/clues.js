@@ -12,8 +12,10 @@
 //   count   array fact has exactly this many entries
 //   in      scalar fact is one of the listed values
 //   same    array fact holds exactly the listed values (any order)
+//   gte     number fact is at least value
+//   lte     number fact is at most value
 
-export const OPS = ['eq', 'ne', 'has', 'lacks', 'all', 'any', 'count', 'in', 'same'];
+export const OPS = ['eq', 'ne', 'has', 'lacks', 'all', 'any', 'count', 'in', 'same', 'gte', 'lte'];
 
 export function opOf(test) {
   return OPS.find((op) => op in test) ?? null;
@@ -49,6 +51,10 @@ export function evalTest(test, facts) {
       return !!arr && arr.length === x;
     case 'same':
       return !!arr && Array.isArray(x) && arr.length === x.length && x.every((e) => arr.includes(e));
+    case 'gte':
+      return typeof v === 'number' && v >= x;
+    case 'lte':
+      return typeof v === 'number' && v <= x;
     default:
       return undefined;
   }

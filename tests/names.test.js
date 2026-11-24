@@ -30,7 +30,7 @@ test('aliases and one typo are accepted, junk is not', () => {
 });
 
 test('autocomplete matches word starts and shows the player’s language', () => {
-  const s = suggest(world.index, 'kin', 'en');
+  const s = suggest(world.index, 'united ki', 'en');
   assert.equal(s[0].id, 'GBR');
   assert.equal(s[0].label, 'United Kingdom');
   const de = suggest(world.index, 'spa', 'de');

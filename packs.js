@@ -8,7 +8,7 @@
 (function (root) {
   'use strict';
   const META = [
-    { id: 'countries', file: 'pack-countries.js', count: 20, title: { en: 'Countries', de: 'Länder', it: 'Paesi', es: 'Países', fr: 'Pays' } },
+    { id: 'countries', file: 'pack-countries.js', count: 196, title: { en: 'Countries', de: 'Länder', it: 'Paesi', es: 'Países', fr: 'Pays' } },
     { id: 'states', file: 'pack-states.js', count: 10, title: { en: 'US States', de: 'US-Bundesstaaten', it: 'Stati USA', es: 'Estados de EE. UU.', fr: 'États américains' } },
   ];
   const loaded = new Map(), pending = new Map();

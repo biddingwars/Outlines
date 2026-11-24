@@ -39,7 +39,7 @@ export function expandPack(pack) {
         x = ws.length > 1 ? `${ws.slice(0, -1).join(', ')} ${AND[l]} ${ws[ws.length - 1]}` : ws[0];
       } else x = tpl.vocab ? word(tpl.vocab, param, l) : String(param);
     }
-    const s = tpl.text[l].replaceAll('{x}', x);
+    const s = tpl.text[l].replaceAll('{x}', x).replace(/\.\.$/, '.');
     return s.charAt(0).toUpperCase() + s.slice(1);
   };
   const items = (pack.items ?? []).map((it) => {

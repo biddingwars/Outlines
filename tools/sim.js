@@ -54,6 +54,12 @@ export const STRATEGIES = {
     guess: ({ clueIndex, answerFor }) => (clueIndex >= 2 ? answerFor() : null),
     draw: ({ outline, rng }) => sketch(outline, 0.4, rng),
   },
+  realPlayer: {
+    name: 'knows big countries by clue 3, smaller ones by clue 4, the smallest by clue 5; draws with skill 0.4',
+    blind: false,
+    guess: ({ clueIndex, answerFor, placeTier }) => (clueIndex >= Math.min(4, placeTier + 1) ? answerFor() : null),
+    draw: ({ outline, rng }) => sketch(outline, 0.4, rng),
+  },
   strongPlayer: {
     name: 'knows the place by clue 2, draws with skill 0.6',
     blind: false,
@@ -87,6 +93,7 @@ export function playGame(pack, strategy, { seed, bots = 1, rounds = 10, difficul
           guessed: turn.guesses.map((g) => g.id),
           rng,
           answerFor: strategy.blind ? undefined : () => answer,
+          placeTier: strategy.blind ? undefined : pack.byId.get(answer).tier,
         };
         const id = strategy.guess(ctx);
         s = id ? step(pack, s, { type: 'guess', id }) : step(pack, s, { type: 'clueTimeout' });

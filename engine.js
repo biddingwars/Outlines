@@ -1053,8 +1053,10 @@
   //   count   array fact has exactly this many entries
   //   in      scalar fact is one of the listed values
   //   same    array fact holds exactly the listed values (any order)
+  //   gte     number fact is at least value
+  //   lte     number fact is at most value
 
-  const OPS = ['eq', 'ne', 'has', 'lacks', 'all', 'any', 'count', 'in', 'same'];
+  const OPS = ['eq', 'ne', 'has', 'lacks', 'all', 'any', 'count', 'in', 'same', 'gte', 'lte'];
 
   function opOf(test) {
     return OPS.find((op) => op in test) ?? null;
@@ -1090,6 +1092,10 @@
         return !!arr && arr.length === x;
       case 'same':
         return !!arr && Array.isArray(x) && arr.length === x.length && x.every((e) => arr.includes(e));
+      case 'gte':
+        return typeof v === 'number' && v >= x;
+      case 'lte':
+        return typeof v === 'number' && v <= x;
       default:
         return undefined;
     }
@@ -1142,7 +1148,7 @@
           x = ws.length > 1 ? `${ws.slice(0, -1).join(', ')} ${AND[l]} ${ws[ws.length - 1]}` : ws[0];
         } else x = tpl.vocab ? word(tpl.vocab, param, l) : String(param);
       }
-      const s = tpl.text[l].replaceAll('{x}', x);
+      const s = tpl.text[l].replaceAll('{x}', x).replace(/\.\.$/, '.');
       return s.charAt(0).toUpperCase() + s.slice(1);
     };
     const items = (pack.items ?? []).map((it) => {

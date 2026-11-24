@@ -14,6 +14,11 @@ for (const [key, strat] of Object.entries(STRATEGIES).filter(([, s]) => s.blind)
 }
 
 test('a decent player can beat the bot, but not always', () => {
-  const r = winRate(world, STRATEGIES.decentPlayer, { games: 24, rounds: 5, seed: 11 });
+  const r = winRate(world, STRATEGIES.decentPlayer, { games: 24, rounds: 5, seed: 11, difficulty: 'beginner' });
   assert.ok(r.rate > 0.2 && r.rate < 1, `${(r.rate * 100).toFixed(0)} %`);
+});
+
+test('with all 196 countries the bot stays a fair match for a realistic player', () => {
+  const r = winRate(world, STRATEGIES.realPlayer, { games: 24, rounds: 5, seed: 11, difficulty: 'master' });
+  assert.ok(r.rate > 0.2 && r.rate < 0.8, `${(r.rate * 100).toFixed(0)} %`);
 });

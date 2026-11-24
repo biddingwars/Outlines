@@ -4,6 +4,7 @@ import { createGame, step, replay, results, activeSeat, activeTurn, revealedClue
 import { outlineToBox } from '../engine/judge.js';
 import { createRng } from '../engine/rng.js';
 import { world, us, deepFreeze } from './helpers.js';
+import { poolFor } from '../engine/pack.js';
 
 const solo = (extra = {}) => ({ seed: 1234, rounds: 5, difficulty: 'standard', seats: [{ kind: 'human', name: 'Leo' }, { kind: 'bot' }], ...extra });
 const perfect = (pack, s) => [outlineToBox(pack.byId.get(s.places[s.round]).outline, 600)];
@@ -23,7 +24,7 @@ test('config limits', () => {
   assert.throws(() => normalizeConfig(world, { seats: [{ kind: 'bot' }, { kind: 'bot' }] }), /human/);
   assert.throws(() => normalizeConfig(world, { seats: [{ kind: 'human' }, { kind: 'human' }, { kind: 'bot' }, { kind: 'bot' }, { kind: 'bot' }] }), /at most/);
   const c = normalizeConfig(world, { seats: [{ kind: 'human' }, { kind: 'bot' }], rounds: 99, difficulty: 'beginner', clueSeconds: 1, drawSeconds: 1000 });
-  assert.equal(c.rounds, 14); // capped by the pool
+  assert.equal(c.rounds, Math.min(world.settings.rounds.max, poolFor(world, 'beginner').length)); // capped
   assert.equal(c.clueSeconds, 5);
   assert.equal(c.drawSeconds, 90);
   assert.equal(normalizeConfig(world, { seats: [{ kind: 'human' }, { kind: 'bot' }], rounds: 1 }).rounds, 5);
