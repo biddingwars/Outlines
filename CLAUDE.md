@@ -23,7 +23,7 @@ outlines), `tools/`, `tests/`, `docs/`. The game never references them.
 - `npm run build` does both; `tests/shell.test.js` fails if either is stale.
 
 ## `sw.js` — bump `CACHE` on every deploy that touches a cached file
-`const CACHE = 'project-x-v11'` and `CONFIG.version` in `platform.js` must move
+`const CACHE = 'project-x-v12'` and `CONFIG.version` in `platform.js` must move
 together (the test checks). Without the bump, installed apps never see the change.
 
 ## Clues
