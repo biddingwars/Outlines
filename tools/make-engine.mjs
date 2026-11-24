@@ -10,7 +10,7 @@ import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
-const ORDER = ['rng', 'geometry', 'raster', 'scoring', 'judge', 'names', 'clues', 'pack', 'bot', 'game', 'records'];
+const ORDER = ['rng', 'geometry', 'raster', 'scoring', 'judge', 'names', 'clues', 'pack', 'bot', 'game', 'records', 'gamelog'];
 
 export function buildEngine() {
   const names = [];

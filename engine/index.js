@@ -10,3 +10,4 @@ export * from './pack.js';
 export * as bot from './bot.js';
 export * from './game.js';
 export * from './records.js';
+export * from './gamelog.js';

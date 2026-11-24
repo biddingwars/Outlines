@@ -23,7 +23,7 @@ outlines), `tools/`, `tests/`, `docs/`. The game never references them.
 - `npm run build` does both; `tests/shell.test.js` fails if either is stale.
 
 ## `sw.js` — bump `CACHE` on every deploy that touches a cached file
-`const CACHE = 'project-x-v5'` and `CONFIG.version` in `platform.js` must move
+`const CACHE = 'project-x-v6'` and `CONFIG.version` in `platform.js` must move
 together (the test checks). Without the bump, installed apps never see the change.
 
 ## Clues
@@ -58,7 +58,16 @@ World pack = all 196 countries (193 UN members + Vatican City, Kosovo, Taiwan):
 ## House rules carried over
 - No network at runtime; every asset bundled; no CDN, no remote code.
 - Privacy: no accounts, analytics or SDKs. Stored on device only: `lang:v1`,
-  `theme:v1`, `settings:v1`, `record:v1`, `name:v1`. "Delete all data" removes all.
+  `theme:v1`, `settings:v1`, `record:v1`, `name:v1`, and `log:v1` only when the player
+  switches on "Record my games". "Delete all data" removes all.
+
+## Beta testing (game log, as in Bidding Wars)
+Settings → "Record my games" (off by default) keeps a log on the device (`engine/gamelog.js`,
+`log:v1`): per game the clues shown, guesses, action timings, drawings (≤80 points per
+ring) with the judge's fit, scores, unrecognised typed names, plus app errors. No names.
+The player exports it (Share or Copy) and sends it; `node tools/analyze-log.mjs <file>
+[--svg dir]` prints the report and draws each drawing over the real outline.
+Guide for testers: `docs/BETA-TESTING.md`.
 - Thirteen languages: en, de, it, es, fr, pt (Brazil), id, zh (Simplified), hi, ja, ko,
   ar (right to left: `dir="rtl"` is set from `LANGS` in `strings.js`), th. Every word in all
   thirteen; the tests fail on any gap.

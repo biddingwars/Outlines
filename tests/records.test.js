@@ -46,3 +46,32 @@ test('a corrupt or foreign record is cleaned up', () => {
   assert.deepEqual(r.packs, { world: { won: 3, lost: 0, tied: 0, streak: 0 } });
   assert.deepEqual(Object.keys(r.best), ['world:FRA']);
 });
+
+test('game log: compact records, capped, unreadable input gives an empty log', async () => {
+  const { gameLog, addGameToLog, addErrorToLog, parseLog, LOG_MAX_GAMES } = await import('../engine/gamelog.js');
+  const { createGame, step, activeTurn } = await import('../engine/game.js');
+  const { world } = await import('./helpers.js');
+  let s = createGame(world, { seats: [{ kind: 'human' }, { kind: 'bot' }], rounds: 5, seed: 3 });
+  // one full human turn: skip to the last clue, then draw a square
+  while (s.phase === 'handoff' || (s.phase === 'clue' && world.byId && activeTurn(s))) {
+    if (s.phase === 'handoff') s = step(world, s, { type: 'ready' });
+    else s = step(world, s, { type: 'clueTimeout' });
+    if (s.phase === 'draw') break;
+  }
+  s = step(world, s, { type: 'submitDrawing', strokes: [[[100, 100], [600, 100], [600, 600], [100, 600], [100, 100]]] });
+  const rec = gameLog(world, s, { t: '2026-11-24T10:00', app: 5, lang: 'en', kind: 'solo', events: [[0, 0, 0, 'ready', null]] });
+  assert.equal(rec.end, 'quit');
+  assert.equal(rec.r.length, 1);
+  assert.equal(rec.r[0].clues.length, 5);
+  assert.ok(rec.r[0].turns[0].rings[0].length <= 80);
+  assert.ok(!JSON.stringify(rec).includes('"name"'), 'no player names');
+  let raw = null;
+  for (let k = 0; k < LOG_MAX_GAMES + 5; k++) raw = addGameToLog(raw, rec);
+  raw = addErrorToLog(raw, { msg: 'boom', where: 'app.js:1' });
+  raw = addErrorToLog(raw, { msg: 'boom', where: 'app.js:1' });
+  const log = parseLog(raw);
+  assert.equal(log.games.length, LOG_MAX_GAMES);
+  assert.equal(log.errors.length, 1);
+  assert.equal(log.errors[0].n, 2);
+  assert.deepEqual(parseLog('not json'), { v: 1, games: [], errors: [] });
+});

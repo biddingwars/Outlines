@@ -49,7 +49,7 @@ const themeLabel = () => t(THEME === 'light' ? 'themeLight' : 'themeDark');
 
 /* ---- settings: one small local value (settings:v1) holding only what differs from the defaults ---- */
 const SETTINGS_KEY = 'settings:v1';
-const SET_DEFAULT = { tz: 0, shapes: false, motion: 'auto', faint: false };
+const SET_DEFAULT = { tz: 0, shapes: false, motion: 'auto', faint: false, log: false };
 function parseSettings(raw) {
   let o = {}; try { o = JSON.parse(raw || '{}') || {}; } catch (e) {}
   return {
@@ -57,6 +57,7 @@ function parseSettings(raw) {
     shapes: o.shapes === true,
     motion: o.motion === 'reduce' ? 'reduce' : 'auto',
     faint: o.faint === true,
+    log: o.log === true,
   };
 }
 let SET = parseSettings(null);
@@ -226,6 +227,8 @@ function applyGame(R, you, bot, level) {
 
 /* ============ HOME ============ */
 function home() {
+  if (GLOG && G && G.phase !== 'gameOver') saveGameLog('quit');
+  GLOG = null;
   G = null; PACK = null;
   $$('.overlay', layer).forEach(o => o.remove()); rootEl.classList.remove('soldOpen', 'celebrating');
   const REC = recFor(SELPACK), count = Packs.meta(SELPACK).count;
@@ -287,8 +290,13 @@ function settingsSheet() {
     <div class="fld"><span class="label">${esc(t('language'))}</span><button class="row glass langrow" id="slang"><span class="t"><span aria-hidden="true">${flag(langFlag(lang))}</span> ${esc(lang.label)}</span>${IC('chev', 'sm')}</button></div>
     <div class="fld"><span class="label">${esc(t('setAccess'))}</span><div class="group">
       ${sw('motion', t('reduceMotion'), t('reduceMotionD'), SET.motion === 'reduce')}${sw('shapes', t('seatShapes'), t('seatShapesD'), SET.shapes)}</div></div>
-    <div class="fld"><span class="label">${esc(t('setHelpers'))}</span><div class="group">${sw('faint', t('faint'), t('faintSub'), SET.faint)}</div></div>` });
+    <div class="fld"><span class="label">${esc(t('setHelpers'))}</span><div class="group">${sw('faint', t('faint'), t('faintSub'), SET.faint)}</div></div>
+    <div class="fld"><span class="label">${esc(t('logHead'))}</span><div class="group">${sw('log', t('setLog'), t('setLogD'), SET.log)}</div>
+      <p class="sm" id="logN"></p><div class="sg"><button type="button" class="btn glassb" id="logx">${esc(t('logExport'))}</button><button type="button" class="btn ghost" id="logc">${esc(t('logClear'))}</button></div></div>` });
   const box = h.wrap;
+  (async () => { try { const L = Engine.parseLog(await Store.get(Engine.LOG_KEY)), el = $('#logN', box); if (el) el.textContent = L.games.length || L.errors.length ? t('logCount', { n: L.games.length }) : t('logEmpty'); } catch (e) {} })();
+  on('logx', () => { Snd.ui(); logSheet(); });
+  on('logc', () => { Snd.ui(); ask(t('logClearTitle'), t('logClearBody'), t('logClear'), async () => { await Store.remove(Engine.LOG_KEY); settingsSheet(); }, () => settingsSheet(), t('cancel')); });
   $$('[data-g]', box).forEach(grp => $$('[role=radio]', grp).forEach(b => b.onclick = () => {
     $$('[role=radio]', grp).forEach(x => x.setAttribute('aria-checked', 'false')); b.setAttribute('aria-checked', 'true');
     Snd.ui(); Haptics.light();
@@ -304,6 +312,55 @@ function settingsSheet() {
   on('sreset', () => { Snd.ui(); ask(t('resetSetTitle'), t('resetSetBody'), t('resetSettings'), async () => { SET = parseSettings(null); await saveSettings(); settingsSheet(); }, () => settingsSheet(), t('cancel')); });
   h.onDismiss = () => { if (!G) home(); };
   return h;
+}
+
+/* ---- the optional game log (log:v1): on this device only, exported by the player for analysis ---- */
+let GLOG = null;                                     // this game's actions while "Record my games" is on
+const logNow = () => new Date().toISOString().slice(0, 16);
+function logEvent(type, detail) {
+  if (!GLOG || !G) return;
+  const turn = Engine.activeTurn(G);
+  GLOG.events.push([Date.now() - GLOG.start, G.round, turn ? turn.seat : null, type, detail === undefined ? null : detail]);
+}
+async function saveGameLog(end) {
+  if (!GLOG || GLOG.saved || !G || !PACK) return;
+  GLOG.saved = true;
+  try {
+    const rec = Engine.gameLog(PACK, G, { t: GLOG.t, app: CONFIG.version, lang: LANG, kind: G._kind || null, end, events: GLOG.events });
+    await Store.set(Engine.LOG_KEY, Engine.addGameToLog(await Store.get(Engine.LOG_KEY), rec));
+  } catch (e) {}
+}
+async function logError(msg, stack, where) {
+  if (!SET.log) return;
+  try {
+    const screen = (app.firstElementChild && app.firstElementChild.dataset.screen) || null;
+    await Store.set(Engine.LOG_KEY, Engine.addErrorToLog(await Store.get(Engine.LOG_KEY), { msg, stack, where, t: logNow(), app: CONFIG.version, screen }));
+  } catch (e) {}
+}
+window.addEventListener('error', e => logError(String(e.message || e.error || 'error'), e.error && e.error.stack, (e.filename || '').split('/').pop() + ':' + (e.lineno || 0)));
+window.addEventListener('unhandledrejection', e => logError(String((e.reason && e.reason.message) || e.reason || 'rejection'), e.reason && e.reason.stack, 'promise'));
+
+/* the exported log: plain text to copy or share (selectable on iOS where the clipboard API may be refused) */
+async function logSheet() {
+  const L = Engine.parseLog(await Store.get(Engine.LOG_KEY)), has = L.games.length || L.errors.length, text = has ? JSON.stringify(L) : '';
+  const canShare = has && navigator.share;
+  const h = sheet({ title: t('logHead'), foot: `${canShare ? `<button class="btn glassb" id="logshare">${esc(t('logShare'))}</button>` : ''}${has ? `<button class="btn glassb" id="logcopy">${esc(t('logCopy'))}</button>` : ''}<button class="btn gold" id="logdone">${esc(t('done'))}</button>`,
+    body: `<p>${esc(has ? t('logExportBody') : t('logEmpty'))}</p>${has ? `<textarea class="logta" id="logta" readonly rows="8" aria-label="${esc(t('logHead'))}"></textarea><p class="sm">${esc(t('logCount', { n: L.games.length }))}</p>` : ''}` });
+  const ta = $('#logta', h.wrap); if (ta) ta.value = text;
+  on('logcopy', async () => {
+    Snd.ui(); if (!ta) return;
+    try { await navigator.clipboard.writeText(text); toast(t('logCopied')); } catch (e) { ta.focus(); ta.select(); try { document.execCommand('copy'); toast(t('logCopied')); } catch (e2) {} }
+  });
+  on('logshare', async () => {
+    Snd.ui();
+    const name = 'project-x-log-' + logNow().slice(0, 10) + '.json';
+    try {
+      const file = new File([text], name, { type: 'application/json' });
+      if (navigator.canShare && navigator.canShare({ files: [file] })) await navigator.share({ files: [file], title: name });
+      else await navigator.share({ text, title: name });
+    } catch (e) {}
+  });
+  on('logdone', () => { Snd.ui(); h.close(); });
 }
 
 function langSheet() {
@@ -338,7 +395,7 @@ function privacy() {
   on('pd', () => { Snd.ui(); h.close(); });
   on('cr', () => { Snd.ui(); credits(); });
   on('wipe', () => { Snd.ui(); ask(t('wipeTitle'), t('wipeBody'), t('wipe'), async () => {
-    await Store.remove(REC_KEY); await Store.remove('lang:v1'); await Store.remove('name:v1'); await Store.remove('theme:v1'); await Store.remove(SETTINGS_KEY);
+    await Store.remove(REC_KEY); await Store.remove('lang:v1'); await Store.remove('name:v1'); await Store.remove('theme:v1'); await Store.remove(SETTINGS_KEY); await Store.remove(Engine.LOG_KEY);
     RECS = parseRecs(null); SELPACK = DEFAULT_PACK; CFG = null;
     THEME = 'dark'; applyTheme(); SET = parseSettings(null); applySettings(); await loadLang(); toast(t('wiped')); home();
   }, null, t('cancel')); });
@@ -425,6 +482,7 @@ async function setup(kind, packId = SELPACK) {
     h.close(true);
     CFG = { seed: Math.floor(Math.random() * 2 ** 32), difficulty: LASTCFG.level, rounds: LASTCFG.rounds, clueSeconds: LASTCFG.clue, drawSeconds: LASTCFG.draw, seats, practice: { faintOutline: SET.faint }, recent: RECS.recent[pack.id] || [] };
     G = Engine.createGame(pack, CFG);
+    GLOG = SET.log ? { t: logNow(), start: Date.now(), events: [], saved: false } : null;
     RECS.recent[pack.id] = (RECS.recent[pack.id] || []).filter(id => !G.places.includes(id)).concat(G.places).slice(-200);
     saveRec();
     G._kind = kind;
@@ -455,7 +513,9 @@ function show() {
 
 function act(action) {
   const before = G, tb = turnNow();
+  if (GLOG) logEvent(action.type, action.type === 'guess' ? (action.id || action.text || null) : action.type === 'submitDrawing' ? (action.strokes || []).reduce((n, s) => n + s.length, 0) : undefined);
   G = Engine.step(PACK, before, action);
+  if (GLOG && G.notice) logEvent('notice', G.notice.type === 'unknownPlace' ? 'unknown:' + G.notice.text : G.notice.type);
   const ta = turnNow();
   if (G.notice && G.notice.type === 'unknownPlace') { FX.shakeX($('#cus')); return toast(t('unknown', { t: G.notice.text })); }
   if (G.notice && G.notice.type === 'alreadyGuessed') { FX.shakeX($('#cus')); return toast(t('already', { p: nameOf(G.notice.id) })); }
@@ -771,6 +831,7 @@ async function recordGame(res) {
 
 function finish() {
   stopClock();
+  saveGameLog('done');
   const res = Engine.results(PACK, G), REC = recFor(PACK.id);
   const red = (v, label) => `<button type="button" class="redact" data-v="${esc(v)}" aria-label="${esc(label || t('hiddenValue'))}"></button>`;
   const order = res.seats.slice().sort((a, b) => b.total - a.total);
