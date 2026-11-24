@@ -6,8 +6,7 @@ asset, add it here and in `credits()` in `app.js` (five languages).
 
 | What | Where it is used | Source | Licence / status |
 |---|---|---|---|
-| US state population (50 states) | `pack-states.js` (generated from `test/census-nst-est2025.json`) | U.S. Census Bureau, Population Division, *Annual Estimates of the Resident Population for the United States, Regions, States, District of Columbia, and Puerto Rico: April 1, 2020 to July 1, 2025* (NST-EST2025-POP), Vintage 2025, released January 2026 | U.S. Government work, public domain |
-| Capital-city population (195 capitals) | `pack-capitals.js` (generated from `test/wup2018-f13-capitals.json`) | United Nations, Department of Economic and Social Affairs, Population Division (2018), *World Urbanization Prospects: The 2018 Revision*, Online Edition — File 13, *Population of Capital Cities in 2018 (thousands)*, <https://population.un.org/wup/> | **CC BY 3.0 IGO** (<http://creativecommons.org/licenses/by/3.0/igo/>), as printed in the file. Numbers copied unchanged; not an endorsement by the United Nations. Choices and caveats: `CAPITALS-SOURCES.md` |
+| US state facts (50 states: regions, neighbours, coasts, capitals, largest cities, nicknames, admission years, population and land-area ranks, time zones, highest points, landmarks) | `pack-states.js` (built from `packs/us-states/data.js`) | U.S. Census Bureau (2020 census, Census regions, land area), U.S. Geological Survey (highest points), state government sites, National Park Service | Facts, not copyrightable; US government data is public domain. Compiled by hand for this game |
 | Country facts for the World pack (names in five languages, capitals, regions, languages, currencies, borders, area, population, internet and dialling codes) | `pack-countries.js` (generated from `packs/world/source.js`, built by `tools/build-world-source.mjs` from world-countries 5.1.0) | **world-countries** by Mohammed Le Doze, <https://github.com/mledoze/countries> | **Open Database License (ODbL) 1.0**. Contains information from world-countries, made available under the ODbL. Corrections (capitals) and hand-kept lists are in `packs/world/lists.js` |
 | Country names in Portuguese, Indonesian, Chinese, Hindi, Japanese, Korean, Arabic and Thai | `pack-countries.js` (read at build time from the Unicode CLDR data built into Node.js through `Intl.DisplayNames`) | **Unicode CLDR**, <https://cldr.unicode.org/> | **Unicode License v3** (permissive; copyright © 1991-2025 Unicode, Inc.). A few long forms are adjusted in `packs/world/pack.js` |
 | Logo and app icons | `logo.svg`, `icon-*.png` (rendered from the SVG) | Original artwork made for this game (a brass map pin holding a globe, with a ripple under it) | Own work, no third-party material |
@@ -19,7 +18,7 @@ asset, add it here and in `credits()` in `app.js` (five languages).
 | three.js | `three.min.js` | three.js authors | MIT — © 2010–2021 three.js authors (text below) |
 | Sound | `sound.js` | Synthesised with Web Audio on the device — no recordings | Ours |
 | Eagle-style win cry (US States) | `Snd.eagle()` in `sound.js` | Synthesised, not a recording | Ours. In films the "eagle" cry is really a **red-tailed hawk**; a bald eagle's own voice is a thin chirp |
-| US States fun facts | `pack-states.js` `facts` | Written for this game | Ours. All 50 were checked against public sources in October 2026 — see `FACTS-SOURCES.md` |
+| US States fun facts and landmark clues | `pack-states.js` `fact`, clues | Written for this game | Ours |
 
 ## Regenerating the US map imagery
 

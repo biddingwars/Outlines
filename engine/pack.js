@@ -235,6 +235,9 @@ const FAMILY = {
   nameLetters: 'name', nameEnd: 'name', nameWords: 'name', nameInitial: 'name',
   capital: 'capital', capLetters: 'capital', capInitial: 'capital',
   official: 'language', lang: 'language', native: 'language',
+  // US States
+  areaRank: 'area', popRank: 'people', missSide: 'river', missRiver: 'river',
+  largest: 'capital', capLargest: 'capital', capTz: 'capital', original13: 'year',
 };
 
 export function clueFamily(clue) {

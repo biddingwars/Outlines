@@ -1,4 +1,6 @@
-// US States pack (starter set). Same structure as the World pack.
+// US States pack: all 50 states. Same structure as the World pack.
+// The 10 states of the starter set keep their hand-written clues; data.js holds the
+// facts of all 50 and auto.js builds a pool of 15 clues for each (3 per tier).
 //
 // facts keys
 //   region       'west' | 'south' | 'midwest' | 'northeast' (US Census regions)
@@ -11,6 +13,8 @@
 //   other keys   culture, food, landmarks, mountains: slugs unique per place
 
 import { localize } from '../i18n/localize.js';
+import { STATES, MORE } from './data.js';
+import { factsOf, buildPools, fromHand } from './auto.js';
 
 const t = (en, de, it, es, fr) => ({ en, de, it, es, fr });
 
@@ -54,7 +58,7 @@ const raw = {
   outlines: 'us-states',
   sources: [
     'Outlines: US Census Bureau Cartographic Boundary Files 1:10m (public domain), via the us-atlas npm package.',
-    'Facts: US Census Bureau regions; official state government sites; National Park Service.',
+    'Facts: US Census Bureau (2020 census populations, regions, land area); USGS (highest points); official state government sites (capitals, nicknames, admission dates); National Park Service (landmarks).',
   ],
   settings: {
     rounds: { min: 5, max: 30, default: 8 },
@@ -64,6 +68,8 @@ const raw = {
   difficulties: {
     beginner: { maxTier: 1, label: t('Beginner', 'Einsteiger', 'Principiante', 'Principiante', 'Débutant') },
     standard: { maxTier: 2, label: t('Standard', 'Standard', 'Standard', 'Estándar', 'Standard') },
+    expert: { maxTier: 3, label: t('Expert', 'Experte', 'Esperto', 'Experto', 'Expert') },
+    master: { maxTier: 4, label: t('Master', 'Meister', 'Maestro', 'Maestro', 'Maître') },
   },
   taunts: {
     early: [
@@ -361,6 +367,23 @@ const raw = {
   ],
 };
 
+/* All 50 states: the starter set's items (translated first, so their hand-written
+   clues keep their place in the i18n files) plus the 40 from data.js. */
+const hand = new Map(localize(raw, 'us').items.map((it) => [it.id, it]));
+const items = Object.keys(STATES).map((code) => {
+  const s = STATES[code];
+  const h = hand.get(code);
+  const lc = code.toLowerCase();
+  const facts = { ...(h?.facts ?? { landmarks: ['lm-' + lc] }), ...factsOf(code), tags: ['scr-' + lc] };
+  const item = h
+    ? { ...h, tier: s.tier, facts }
+    : { id: code, geo: s.fips, tier: s.tier, names: fromHand(MORE[code].names, code + '.names'), facts, fact: fromHand(MORE[code].fact, code + '.fact') };
+  if (code === 'HI') item.mainlandOnly = true; // the Big Island is 62 % of the land
+  item.aliases = [...new Set([...(item.aliases ?? []), code])]; // the postal code: "TX", "NY"…
+  return item;
+});
+const { pools } = buildPools(items, (code) => (hand.get(code)?.clues ?? []).map((clue, k) => ({ tier: k + 1, clue })));
+
 /** Texts still missing a translation; tools/i18n.mjs prints them. */
 export const missing = [];
-export default localize(raw, 'us', missing);
+export default localize({ ...raw, items: items.map((it) => ({ ...it, clues: pools[it.id] })) }, 'us', missing);

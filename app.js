@@ -434,7 +434,7 @@ async function setup(kind, packId = SELPACK) {
   const draw = [15, 20, 30, 45].includes(c0.draw) ? c0.draw : 20;
   const nPl = [2, 3, 4].includes(c0.players) ? c0.players : 2;
   const nBots = kind === 'solo' ? ([1, 2, 3].includes(c0.bots) ? c0.bots : 1) : ([0, 1, 2].includes(c0.bots) && nPl + c0.bots <= 4 ? c0.bots : 0);
-  const lvParts = k => { const l = pack.difficulties[k]; return [l.label[LANG] || l.label.en, `${t('diffSub_' + k)} · ${Engine.poolFor(pack, k).length}`]; };
+  const lvParts = k => { const l = pack.difficulties[k], us = pack.id === 'states' && (k === 'expert' || k === 'master'); return [l.label[LANG] || l.label.en, `${t((us ? 'diffSubUS_' : 'diffSub_') + k)} · ${Engine.poolFor(pack, k).length}`]; };
   h.set(`
     <p class="sm">${esc(kind === 'solo' ? t('rivalDesc') : t('multiDesc'))}</p>
     ${kind === 'multi' ? `<div class="fld inl"><span class="label">${esc(t('peopleN'))}</span>${seg('players', t('peopleN'), [[2, '2'], [3, '3'], [4, '4']], nPl)}</div>` : ''}
@@ -884,7 +884,7 @@ function buildWorld(sec, res) {
   const usMode = PACK.id === 'states' && window.USView;
   const ex = $('#extra', sec);
   ex.insertAdjacentHTML('afterbegin', `<div class="glass gl${usMode ? ' gl-us' : ''}">${usMode ? `<div class="usm" id="gl"><img class="gph" src="us-map.webp" alt="" decoding="async"></div>` : `<div class="globe" id="gl"></div>`}
-      <div class="cap"><b>${esc(t('worldTitle'))}</b>${esc(t('dragSpin'))}</div>
+      <div class="cap">${usMode ? `<b>${esc(t('usMapTitle'))}</b>` : `<b>${esc(t('worldTitle'))}</b>${esc(t('dragSpin'))}`}</div>
       <div class="chips">${lots.map(b => `<span class="chip"><span aria-hidden="true">${icon(b)}</span> ${esc(cname(b))} <b class="num">${b.value}%</b></span>`).join('')}</div></div>`);
   const host = $('#gl', sec);
   if (usMode) { USView.render(host, lots, { reduced: FX.reduced, label: b => b.id, value: b => b.value + '%', aria: t('worldTitle') + ': ' + lots.map(cname).join(', ') }).catch(() => {}); return; }

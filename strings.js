@@ -2417,3 +2417,23 @@ const STRLOG = {
  }
 };
 Object.keys(STRLOG).forEach(l => Object.assign(STR[l], STRLOG[l]));
+
+/* US States: the results map's caption (it does not spin) and the last two difficulty lines
+   (the Countries ones talk about countries) */
+const STRUS = {
+  en: { usMapTitle: 'The states you played', diffSubUS_expert: 'Also lesser-known states', diffSubUS_master: 'All 50 states' },
+  de: { usMapTitle: 'Die gespielten Staaten', diffSubUS_expert: 'Auch weniger bekannte Staaten', diffSubUS_master: 'Alle 50 Staaten' },
+  it: { usMapTitle: 'Gli stati della partita', diffSubUS_expert: 'Anche stati meno noti', diffSubUS_master: 'Tutti i 50 stati' },
+  es: { usMapTitle: 'Los estados de la partida', diffSubUS_expert: 'También estados menos conocidos', diffSubUS_master: 'Los 50 estados' },
+  fr: { usMapTitle: 'Les États de la partie', diffSubUS_expert: 'Aussi des États moins connus', diffSubUS_master: 'Les 50 États' },
+  pt: { usMapTitle: 'Os estados da partida', diffSubUS_expert: 'Também estados menos conhecidos', diffSubUS_master: 'Todos os 50 estados' },
+  id: { usMapTitle: 'Negara bagian dalam permainan ini', diffSubUS_expert: 'Juga negara bagian yang kurang dikenal', diffSubUS_master: 'Semua 50 negara bagian' },
+  zh: { usMapTitle: '本局的州', diffSubUS_expert: '也包括不太知名的州', diffSubUS_master: '全部50个州' },
+  hi: { usMapTitle: 'इस खेल के राज्य', diffSubUS_expert: 'कम जाने-माने राज्य भी', diffSubUS_master: 'सभी 50 राज्य' },
+  ja: { usMapTitle: 'このゲームの州', diffSubUS_expert: 'あまり知られていない州も', diffSubUS_master: '全50州' },
+  ko: { usMapTitle: '이번 게임의 주', diffSubUS_expert: '덜 알려진 주도 포함', diffSubUS_master: '50개 주 전체' },
+  ar: { usMapTitle: 'ولايات هذه اللعبة', diffSubUS_expert: 'وولايات أقل شهرة أيضًا', diffSubUS_master: 'كل الولايات الخمسين' },
+  th: { usMapTitle: 'รัฐในเกมนี้', diffSubUS_expert: 'รวมรัฐที่ไม่ค่อยมีคนรู้จัก', diffSubUS_master: 'ครบทั้ง 50 รัฐ' },
+};
+Object.keys(STRUS).forEach(l => Object.assign(STR[l], STRUS[l]));
+

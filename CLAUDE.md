@@ -23,7 +23,7 @@ outlines), `tools/`, `tests/`, `docs/`. The game never references them.
 - `npm run build` does both; `tests/shell.test.js` fails if either is stale.
 
 ## `sw.js` — bump `CACHE` on every deploy that touches a cached file
-`const CACHE = 'project-x-v9'` and `CONFIG.version` in `platform.js` must move
+`const CACHE = 'project-x-v10'` and `CONFIG.version` in `platform.js` must move
 together (the test checks). Without the bump, installed apps never see the change.
 
 ## Clues
@@ -60,6 +60,19 @@ World pack = all 196 countries (193 UN members + Vatican City, Kosovo, Taiwan):
 - Fun facts ("Did you know?") for the other 176: `packs/world/facts-*.js`, by region;
   a test checks every country has one in all five languages.
 - Difficulty: beginner (tier 1), standard (≤2), expert (≤3), master (all 196).
+
+US States pack = all 50 states, built the same way (`packs/us-states/`):
+- `data.js` — hand-kept facts for all 50 (region, neighbours, coasts, borders, capital, largest
+  city, nickname, admission year, 2020 population rank, land-area rank, capital time zone,
+  side of the Mississippi, highest point) and, for the 40 added states, names, a landmark and
+  a fun fact in the first five languages. `tests/states.test.js` checks the facts agree.
+- `auto.js` — a pool of 15 clues per state, 3 per tier, placed by how many of the 50 they fit
+  (tier 1 ≈ 16, tier 2 ≈ 7, tier 3 ≈ 3–4, tier 4 ≈ 1–2, tier 5 = 1). Texts are complete in all
+  thirteen languages: the other eight come from the `us` section of `packs/i18n/<lang>.js`
+  (`frame.<name>`, `XX.names`, `landmark.XX`, `XX.fact`) and city names from `city`.
+- The 10 starter states keep their hand-written clues; one that gives the state away moves to tier 5.
+- Postal codes ("TX") are accepted as names; equal matches list the better-known place first.
+- Difficulty: beginner (12 states), standard (26), expert (41), master (all 50).
 
 ## House rules carried over
 - No network at runtime; every asset bundled; no CDN, no remote code.

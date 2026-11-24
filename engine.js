@@ -354,38 +354,43 @@
   }
 
   function fillRow(row, r, n, out) {
+    // Crossings going down (+1) and up (−1) are sorted apart with the native numeric sort
+    // and merged (up first on a tie, as before): a wild scribble has thousands per row and a
+    // comparator sort was most of the judge's time on hostile input. Same pixels as before.
     const k = row.length / 2;
-    const idx = new Array(k);
-    for (let i = 0; i < k; i++) idx[i] = i;
-    idx.sort((a, b) => row[2 * a] - row[2 * b] || row[2 * a + 1] - row[2 * b + 1]);
-    let wind = 0;
+    let np = 0;
+    for (let i = 0; i < k; i++) if (row[2 * i + 1] > 0) np++;
+    const down = new Float64Array(np);
+    const up = new Float64Array(k - np);
+    for (let i = 0, a = 0, b = 0; i < k; i++) {
+      if (row[2 * i + 1] > 0) down[a++] = row[2 * i];
+      else up[b++] = row[2 * i];
+    }
+    down.sort();
+    up.sort();
     const base = r * n;
-    for (let q = 0; q < k; q++) {
-      const i = idx[q];
-      const x = row[2 * i];
+    let wind = 0;
+    let start = 0;
+    for (let a = 0, b = 0; a < down.length || b < up.length; ) {
+      let x;
+      let d;
+      if (b < up.length && (a >= down.length || up[b] <= down[a])) {
+        x = up[b++];
+        d = -1;
+      } else {
+        x = down[a++];
+        d = 1;
+      }
       const prev = wind;
-      wind += row[2 * i + 1];
-      if (prev === 0 && wind !== 0) {
-        // start of a filled span at x; find where winding returns to zero
-        let end = x;
-        let w = wind;
-        let q2 = q + 1;
-        for (; q2 < k; q2++) {
-          const i2 = idx[q2];
-          w += row[2 * i2 + 1];
-          if (w === 0) {
-            end = row[2 * i2];
-            break;
-          }
-        }
-        // Pixels whose centre c+0.5 lies in [x, end)
-        let c0 = Math.ceil(x - 0.5);
-        let c1 = Math.ceil(end - 0.5) - 1;
+      wind += d;
+      if (prev === 0) start = x; // a filled span starts here…
+      else if (wind === 0) {
+        // …and ends where the winding returns to zero: pixels whose centre c+0.5 lies in [start, x)
+        let c0 = Math.ceil(start - 0.5);
+        let c1 = Math.ceil(x - 0.5) - 1;
         if (c0 < 0) c0 = 0;
         if (c1 > n - 1) c1 = n - 1;
         for (let c = c0; c <= c1; c++) out[base + c] = 1;
-        wind = 0;
-        q = q2;
       }
     }
   }
@@ -987,7 +992,8 @@
       byKey.get(e.key).add(e.id);
     }
     const names = new Map(items.map((it) => [it.id, it.names]));
-    return { entries, byKey, names };
+    const tiers = new Map(items.map((it) => [it.id, Number.isInteger(it.tier) ? it.tier : 9]));
+    return { entries, byKey, names, tiers };
   }
 
   function editDistanceAtMost1(a, b) {
@@ -1058,9 +1064,10 @@
     return [...best.values()]
       .map(({ score, e }) => {
         const label = index.names.get(e.id)?.[lang] ?? index.names.get(e.id)?.en ?? e.label;
-        return { id: e.id, label, matched: fold(label) === e.key ? null : e.label, score };
+        return { id: e.id, label, matched: fold(label) === e.key ? null : e.label, score, tier: index.tiers?.get(e.id) ?? 9 };
       })
-      .sort((a, b) => a.score - b.score || a.label.localeCompare(b.label))
+      // equal matches: the better-known place first ("new" → New York before New Hampshire)
+      .sort((a, b) => a.score - b.score || a.tier - b.tier || a.label.localeCompare(b.label))
       .slice(0, limit)
       .map(({ id, label, matched }) => ({ id, label, matched }));
   }
@@ -1378,6 +1385,9 @@
     nameLetters: 'name', nameEnd: 'name', nameWords: 'name', nameInitial: 'name',
     capital: 'capital', capLetters: 'capital', capInitial: 'capital',
     official: 'language', lang: 'language', native: 'language',
+    // US States
+    areaRank: 'area', popRank: 'people', missSide: 'river', missRiver: 'river',
+    largest: 'capital', capLargest: 'capital', capTz: 'capital', original13: 'year',
   };
 
   function clueFamily(clue) {

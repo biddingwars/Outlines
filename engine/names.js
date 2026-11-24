@@ -46,7 +46,8 @@ export function buildIndex(items) {
     byKey.get(e.key).add(e.id);
   }
   const names = new Map(items.map((it) => [it.id, it.names]));
-  return { entries, byKey, names };
+  const tiers = new Map(items.map((it) => [it.id, Number.isInteger(it.tier) ? it.tier : 9]));
+  return { entries, byKey, names, tiers };
 }
 
 function editDistanceAtMost1(a, b) {
@@ -117,9 +118,10 @@ export function suggest(index, text, lang = 'en', limit = 6) {
   return [...best.values()]
     .map(({ score, e }) => {
       const label = index.names.get(e.id)?.[lang] ?? index.names.get(e.id)?.en ?? e.label;
-      return { id: e.id, label, matched: fold(label) === e.key ? null : e.label, score };
+      return { id: e.id, label, matched: fold(label) === e.key ? null : e.label, score, tier: index.tiers?.get(e.id) ?? 9 };
     })
-    .sort((a, b) => a.score - b.score || a.label.localeCompare(b.label))
+    // equal matches: the better-known place first ("new" → New York before New Hampshire)
+    .sort((a, b) => a.score - b.score || a.tier - b.tier || a.label.localeCompare(b.label))
     .slice(0, limit)
     .map(({ id, label, matched }) => ({ id, label, matched }));
 }
