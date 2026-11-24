@@ -363,8 +363,4 @@ export const frames = {
   capInitial: t('The name of its capital begins with {x}.', 'Der Name seiner Hauptstadt beginnt mit {x}.', 'Il nome della sua capitale comincia con {x}.', 'El nombre de su capital empieza por {x}.', 'Le nom de sa capitale commence par {x}.'),
   capLetters: t('The name of its capital has {x} letters.', 'Der Name seiner Hauptstadt hat {x} Buchstaben.', 'Il nome della sua capitale ha {x} lettere.', 'El nombre de su capital tiene {x} letras.', 'Le nom de sa capitale compte {x} lettres.'),
   scrambled: t('Unscramble its name: {x}', 'Bring die Buchstaben in Ordnung: {x}', 'Riordina le lettere del nome: {x}', 'Ordena las letras de su nombre: {x}', 'Remets les lettres de son nom dans l’ordre : {x}'),
-  fact: t('Its capital is {cap}, and about {pop} people live there.', 'Seine Hauptstadt ist {cap}; dort leben etwa {pop} Menschen.', 'La sua capitale è {cap} e ci vivono circa {pop} persone.', 'Su capital es {cap} y allí viven unos {pop} habitantes.', 'Sa capitale est {cap}, et environ {pop} personnes y vivent.'),
-  factNoCap: t('About {pop} people live there.', 'Dort leben etwa {pop} Menschen.', 'Ci vivono circa {pop} persone.', 'Allí viven unos {pop} habitantes.', 'Environ {pop} personnes y vivent.'),
-  million: t('{n} million', '{n} Millionen', '{n} milioni di', '{n} millones de', '{n} millions de'),
-  millionOne: t('1 million', '1 Million', '1 milione di', '1 millón de', '1 million de'),
 };

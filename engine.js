@@ -915,15 +915,19 @@
 
 
   // ───────────── engine/names.js ─────────────
-  // Name matching and autocomplete across all five languages.
+  // Name matching and autocomplete across every language of the game.
 
-  const LANGS = Object.freeze(['en', 'de', 'it', 'es', 'fr']);
+  const LANGS = Object.freeze(['en', 'de', 'it', 'es', 'fr', 'pt', 'id', 'zh', 'hi', 'ja', 'ko', 'ar', 'th']);
+  /** Languages written in a script other than Latin. */
+  const NON_LATIN = Object.freeze(['zh', 'hi', 'ja', 'ko', 'ar', 'th']);
 
-  /** Fold a name for comparison: no accents, case, punctuation or articles. */
+  /** Fold a name for comparison: no accents, case, punctuation or articles. Letters of
+   * every script are kept (NFC, so Hangul, kana and Devanagari stay whole). */
   function fold(text) {
     return String(text ?? '')
       .normalize('NFKD')
       .replace(/[̀-ͯ]/g, '')
+      .normalize('NFC')
       .toLowerCase()
       .replace(/ß/g, 'ss')
       .replace(/æ/g, 'ae')
@@ -931,7 +935,7 @@
       .replace(/ø/g, 'o')
       .replace(/&/g, ' and ')
       .replace(/['’`´.]/g, '')
-      .replace(/[^a-z0-9]+/g, ' ')
+      .replace(/[^\p{L}\p{M}\p{N}]+/gu, ' ')
       .trim()
       .replace(/^(the|la|le|les|el|los|las|il|lo|gli|i|die|der|das|l) /, '');
   }
@@ -1122,7 +1126,8 @@
   const CLUES_PER_ITEM = 5;
   const TIERS = 5;
 
-  const AND = { en: 'and', de: 'und', it: 'e', es: 'y', fr: 'et' };
+  const AND = { en: ' and ', de: ' und ', it: ' e ', es: ' y ', fr: ' et ', pt: ' e ', id: ' dan ', zh: '和', hi: ' और ', ja: 'と', ko: ' 및 ', ar: ' و', th: ' และ ' };
+  const COMMA = { zh: '、', ja: '、', ar: '، ' };
 
   /**
    * Turn a pack's compact clue entries into { tier, text, test } objects.
@@ -1145,7 +1150,7 @@
       if (param !== undefined) {
         if (Array.isArray(param)) {
           const ws = param.map((v) => word(tpl.vocab, v, l));
-          x = ws.length > 1 ? `${ws.slice(0, -1).join(', ')} ${AND[l]} ${ws[ws.length - 1]}` : ws[0];
+          x = ws.length > 1 ? `${ws.slice(0, -1).join(COMMA[l] ?? ', ')}${AND[l]}${ws[ws.length - 1]}` : ws[0];
         } else x = tpl.vocab ? word(tpl.vocab, param, l) : String(param);
       }
       const s = tpl.text[l].replaceAll('{x}', x).replace(/\.\.$/, '.');
@@ -2021,5 +2026,5 @@
   }
 
 
-  return { hashString, deriveSeed, toSeed, createRng, isFinitePoint, signedArea, area, centroid, bbox, dist, perimeter, maxRadius, simplify, simplifyRing, resample, projectLAEA, rasterize, rasterizeUnion, countOn, moments, overlap, DEFAULT_CURVE, DEFAULT_RULES, ZERO_GAP, accuracyFromGap, stampValue, multiplierFor, validateCurve, basePointsFor, roundScore, JUDGE_DEFAULTS, unflatten, cleanStrokes, prepareTarget, outlineGap, blobBaseline, judge, outlineToCanvas, drawingAspect, outlineToBox, LANGS, fold, buildIndex, resolve, suggest, OPS, opOf, evalTest, filterByTests, CLUES_PER_ITEM, TIERS, expandPack, validatePack, preparePack, poolFor, hasCoords, pickClues, TEMPERAMENTS, CLUE_RECALL, rollKnowledge, rollSkill, moodFor, thresholdFor, decide, sketch, line, SEAT_COLORS, SEAT_SHAPES, MAX_SEATS, LIMITS, BOT_CANVAS, normalizeConfig, isPractice, createGame, totals, botView, botLine, activeSeat, activeTurn, step, replay, revealedClues, results, RECORD_VERSION, emptyRecord, sanitizeRecord, recordGame, recordDrawing };
+  return { hashString, deriveSeed, toSeed, createRng, isFinitePoint, signedArea, area, centroid, bbox, dist, perimeter, maxRadius, simplify, simplifyRing, resample, projectLAEA, rasterize, rasterizeUnion, countOn, moments, overlap, DEFAULT_CURVE, DEFAULT_RULES, ZERO_GAP, accuracyFromGap, stampValue, multiplierFor, validateCurve, basePointsFor, roundScore, JUDGE_DEFAULTS, unflatten, cleanStrokes, prepareTarget, outlineGap, blobBaseline, judge, outlineToCanvas, drawingAspect, outlineToBox, LANGS, NON_LATIN, fold, buildIndex, resolve, suggest, OPS, opOf, evalTest, filterByTests, CLUES_PER_ITEM, TIERS, expandPack, validatePack, preparePack, poolFor, hasCoords, pickClues, TEMPERAMENTS, CLUE_RECALL, rollKnowledge, rollSkill, moodFor, thresholdFor, decide, sketch, line, SEAT_COLORS, SEAT_SHAPES, MAX_SEATS, LIMITS, BOT_CANVAS, normalizeConfig, isPractice, createGame, totals, botView, botLine, activeSeat, activeTurn, step, replay, revealedClues, results, RECORD_VERSION, emptyRecord, sanitizeRecord, recordGame, recordDrawing };
 });

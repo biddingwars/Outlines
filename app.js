@@ -169,15 +169,21 @@ function t(key, vars) {
   if (vars) Object.keys(vars).forEach(k => { v = v.split('{' + k + '}').join(vars[k]); });
   return v;
 }
+// Sets lang (for fonts and screen readers) and dir: Arabic reads right to left.
+function applyLang() {
+  const d = document.documentElement;
+  d.lang = LANG;
+  d.dir = (LANGS.find(l => l.id === LANG) || {}).rtl ? 'rtl' : 'ltr';
+}
 async function loadLang() {
-  const v = await Store.get('lang:v1'); if (v && STR[v]) { LANG = v; document.documentElement.lang = LANG; return; }
+  const v = await Store.get('lang:v1'); if (v && STR[v]) { LANG = v; applyLang(); return; }
   const n = (navigator.language || 'en').slice(0, 2);
   if (STR[n]) LANG = n;
-  document.documentElement.lang = LANG;
+  applyLang();
 }
 async function setLang(id) {
   if (!STR[id]) return;
-  LANG = id; document.documentElement.lang = LANG;
+  LANG = id; applyLang();
   await Store.set('lang:v1', id);
   home();
 }
@@ -519,7 +525,7 @@ function clueScreen() {
         <div class="ringwrap" id="timer" role="progressbar" aria-label="${esc(t('aTimer'))}" aria-valuemin="0" aria-valuemax="${G.config.clueSeconds}" style="--p:1">
           <svg viewBox="0 0 200 200" aria-hidden="true"><defs><linearGradient id="rg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" style="stop-color:var(--gold1)"/><stop offset="1" style="stop-color:var(--gold2)"/></linearGradient></defs>
             <circle cx="100" cy="100" r="92" fill="none" stroke="var(--track)" stroke-width="9"/><circle class="prog" cx="100" cy="100" r="92" fill="none" stroke="url(#rg)" stroke-width="9" stroke-linecap="round"/></svg>
-          <div class="in" id="bump"><div class="lbl">${esc(t('worth', { p: '' }).trim())}</div><div class="price"><span id="price">${worth}</span></div><div class="lbl">${esc(worth === 1 ? t('point') : t('pointsWord'))}</div></div><span class="secs num" id="secs" aria-hidden="true"></span></div>
+          <div class="in" id="bump"><div class="lbl">${esc(t('worthLabel'))}</div><div class="price"><span id="price">${worth}</span></div><div class="lbl">${esc(worth === 1 ? t('point') : t('pointsWord'))}</div></div><span class="secs num" id="secs" aria-hidden="true"></span></div>
         <div class="holder"><span class="dot s0"></span><span>${esc(t('clueOf', { n: clues.length }))}</span></div>
         <div class="taunt fact" id="taunt">${esc(last ? t('notIt', { p: nameOf(last) }) : t('costNote'))}</div>
       </div></div>
@@ -537,7 +543,7 @@ function clueScreen() {
   const inp = $('#cus', sec), ul = $('#sugg', sec);
   let sugg = [], sel = -1;
   const paintSugg = () => {
-    sugg = inp.value.trim() ? Engine.suggest(PACK.index, inp.value, LANG, 5) : [];
+    sugg = inp.value.trim() ? Engine.suggest(PACK.index, inp.value, LANG, 3) : [];
     if (sel >= sugg.length) sel = sugg.length - 1;
     ul.innerHTML = sugg.map((s, i) => `<li><button type="button" data-pick="${s.id}" aria-selected="${i === sel}">${esc(s.label)}${s.matched ? `<small>${esc(s.matched)}</small>` : ''}</button></li>`).join('');
     $$('[data-pick]', ul).forEach(b => b.onclick = () => { Snd.ui(); act({ type: 'guess', id: b.dataset.pick }); });

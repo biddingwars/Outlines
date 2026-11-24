@@ -23,7 +23,7 @@ outlines), `tools/`, `tests/`, `docs/`. The game never references them.
 - `npm run build` does both; `tests/shell.test.js` fails if either is stale.
 
 ## `sw.js` — bump `CACHE` on every deploy that touches a cached file
-`const CACHE = 'project-x-v3'` and `CONFIG.version` in `platform.js` must move
+`const CACHE = 'project-x-v4'` and `CONFIG.version` in `platform.js` must move
 together (the test checks). Without the bump, installed apps never see the change.
 
 ## Clues
@@ -50,7 +50,18 @@ World pack = all 196 countries (193 UN members + Vatican City, Kosovo, Taiwan):
 - No network at runtime; every asset bundled; no CDN, no remote code.
 - Privacy: no accounts, analytics or SDKs. Stored on device only: `lang:v1`,
   `theme:v1`, `settings:v1`, `record:v1`, `name:v1`. "Delete all data" removes all.
-- Five languages (`strings.js`); every word in all five.
+- Thirteen languages: en, de, it, es, fr, pt (Brazil), id, zh (Simplified), hi, ja, ko,
+  ar (right to left: `dir="rtl"` is set from `LANGS` in `strings.js`), th. Every word in all
+  thirteen; the tests fail on any gap.
+  - UI words: `strings.js` (`STR` for the first five, `STRL` for the other eight).
+  - Pack text: the first five live in the pack sources; the other eight in
+    `packs/i18n/<lang>.js` (+ `<lang>-facts.js`), keyed by the text's place in the pack
+    (layout in `packs/i18n/localize.js`). `node tools/i18n.mjs` lists anything missing.
+  - Country names in the added languages come from Unicode CLDR (`Intl.DisplayNames`,
+    at build time) with a few fixes in `packs/world/pack.js`.
+  - Name clues (letters, initials, scrambled name) use the English name in non-Latin
+    scripts, and say so.
+  - Use CSS logical properties (`inset-inline-start`, `text-align:start`) so Arabic mirrors.
 - The engine is pure: no DOM, storage or timers (`tests/purity.test.js`).
 - Scoring is tuned by simulation (`npm run sim`, `npm run tune`), never by feel.
 

@@ -10,6 +10,8 @@
 //   nickname     official or customary nickname (slug)
 //   other keys   culture, food, landmarks, mountains: slugs unique per place
 
+import { localize } from '../i18n/localize.js';
+
 const t = (en, de, it, es, fr) => ({ en, de, it, es, fr });
 
 const MEXICO = {
@@ -45,7 +47,7 @@ const capital = (city) => ({
   test: { f: 'capital', eq: city },
 });
 
-export default {
+const raw = {
   id: 'us-states',
   version: 1,
   title: t('US States', 'US-Bundesstaaten', 'Stati USA', 'Estados de EE. UU.', 'États américains'),
@@ -358,3 +360,7 @@ export default {
     },
   ],
 };
+
+/** Texts still missing a translation; tools/i18n.mjs prints them. */
+export const missing = [];
+export default localize(raw, 'us', missing);

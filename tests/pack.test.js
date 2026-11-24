@@ -1,4 +1,5 @@
 import { test } from 'node:test';
+import { world } from './helpers.js';
 import assert from 'node:assert/strict';
 import { validatePack, preparePack, poolFor, expandPack } from '../engine/pack.js';
 import worldPack from '../packs/world/pack.js';
@@ -6,7 +7,7 @@ import worldOutlines from '../packs/world/outlines.js';
 import usPack from '../packs/us-states/pack.js';
 import usOutlines from '../packs/us-states/outlines.js';
 import { loadPack, PACKS } from '../packs/registry.js';
-import { LANGS } from '../engine/names.js';
+import { LANGS, resolve, suggest } from '../engine/names.js';
 
 const clone = (p) => structuredClone(p);
 
@@ -90,7 +91,7 @@ test('archipelago items are flagged mainland-only', async () => {
   for (const it of w.items) if (it.mainShare < 0.8) assert.ok(it.mainlandOnly, it.id);
 });
 
-test('every country has a real fun fact in all five languages', async () => {
+test('every country has a real fun fact in every language', async () => {
   const { funFacts } = await import('../packs/world/pack.js');
   const base = (await import('../packs/world/base.js')).default;
   const crafted = new Set(base.items.map((it) => it.id));
@@ -102,9 +103,24 @@ test('every country has a real fun fact in all five languages', async () => {
   for (const it of worldPack.items) {
     const f = crafted.has(it.id) ? it.fact : funFacts[it.id];
     assert.ok(f, `${it.id} has no fun fact`);
-    for (const l of LANGS) assert.ok(typeof f[l] === 'string' && f[l].length > 20, `${it.id} fact ${l}`);
-    assert.equal(it.fact, f);
+    for (const l of LANGS) assert.ok(typeof it.fact[l] === 'string' && it.fact[l].length > 8, `${it.id} fact ${l}`);
+    assert.equal(it.fact.en, f.en);
   }
   const en = Object.values(funFacts).map((f) => f.en);
   assert.equal(new Set(en).size, en.length, 'two countries share a fun fact');
+});
+
+test('every pack text has a translation in every added language', async () => {
+  const { missing: world } = await import('../packs/world/pack.js');
+  const { missing: states } = await import('../packs/us-states/pack.js');
+  const gaps = [...world, ...states];
+  assert.deepEqual(gaps.slice(0, 10), [], `${gaps.length} gaps; run node tools/i18n.mjs`);
+});
+
+test('country names resolve in every language and script', () => {
+  const cases = { pt: 'Alemanha', id: 'Jerman', zh: '德国', hi: 'जर्मनी', ja: 'ドイツ', ko: '독일', ar: 'ألمانيا', th: 'เยอรมนี' };
+  for (const [l, name] of Object.entries(cases)) {
+    assert.equal(resolve(world.index, name), 'DEU', `${l}: ${name}`);
+    assert.equal(suggest(world.index, name.slice(0, 2), l).some((s) => s.id === 'DEU'), true, `${l} autocomplete`);
+  }
 });

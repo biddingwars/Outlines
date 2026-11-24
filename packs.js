@@ -8,8 +8,8 @@
 (function (root) {
   'use strict';
   const META = [
-    { id: 'countries', file: 'pack-countries.js', count: 196, title: { en: 'Countries', de: 'Länder', it: 'Paesi', es: 'Países', fr: 'Pays' } },
-    { id: 'states', file: 'pack-states.js', count: 10, title: { en: 'US States', de: 'US-Bundesstaaten', it: 'Stati USA', es: 'Estados de EE. UU.', fr: 'États américains' } },
+    { id: 'countries', file: 'pack-countries.js', count: 196, title: { en: 'Countries', de: 'Länder', it: 'Paesi', es: 'Países', fr: 'Pays', pt: 'Países', id: 'Negara', zh: '国家', hi: 'देश', ja: '国', ko: '나라', ar: 'الدول', th: 'ประเทศ' } },
+    { id: 'states', file: 'pack-states.js', count: 10, title: { en: 'US States', de: 'US-Bundesstaaten', it: 'Stati USA', es: 'Estados de EE. UU.', fr: 'États américains', pt: 'Estados dos EUA', id: 'Negara Bagian AS', zh: '美国各州', hi: 'अमेरिकी राज्य', ja: 'アメリカの州', ko: '미국의 주', ar: 'الولايات الأمريكية', th: 'รัฐของสหรัฐฯ' } },
   ];
   const loaded = new Map(), pending = new Map();
 

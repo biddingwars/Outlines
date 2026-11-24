@@ -13,7 +13,8 @@ import { prepareTarget, unflatten } from './judge.js';
 export const CLUES_PER_ITEM = 5;
 export const TIERS = 5;
 
-const AND = { en: 'and', de: 'und', it: 'e', es: 'y', fr: 'et' };
+const AND = { en: ' and ', de: ' und ', it: ' e ', es: ' y ', fr: ' et ', pt: ' e ', id: ' dan ', zh: '和', hi: ' और ', ja: 'と', ko: ' 및 ', ar: ' و', th: ' และ ' };
+const COMMA = { zh: '、', ja: '、', ar: '، ' };
 
 /**
  * Turn a pack's compact clue entries into { tier, text, test } objects.
@@ -36,7 +37,7 @@ export function expandPack(pack) {
     if (param !== undefined) {
       if (Array.isArray(param)) {
         const ws = param.map((v) => word(tpl.vocab, v, l));
-        x = ws.length > 1 ? `${ws.slice(0, -1).join(', ')} ${AND[l]} ${ws[ws.length - 1]}` : ws[0];
+        x = ws.length > 1 ? `${ws.slice(0, -1).join(COMMA[l] ?? ', ')}${AND[l]}${ws[ws.length - 1]}` : ws[0];
       } else x = tpl.vocab ? word(tpl.vocab, param, l) : String(param);
     }
     const s = tpl.text[l].replaceAll('{x}', x).replace(/\.\.$/, '.');

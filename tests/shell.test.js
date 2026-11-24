@@ -40,13 +40,13 @@ test('engine.js runs as a classic script and registers every pack', () => {
   }
 });
 
-test('every word the app asks for exists in all five languages', () => {
-  const STR = new Function(read('strings.js') + ';return STR;')();
+test('every word the app asks for exists in every language', () => {
+  const { STR, LANGS } = new Function(read('strings.js') + ';return { STR, LANGS };')();
   const keys = [...new Set([...read('app.js').matchAll(/\bt\('(\w+)'/g)].map((m) => m[1]))].filter((k) => !k.endsWith('_'));
   const missing = [];
-  for (const l of ['en', 'de', 'it', 'es', 'fr']) for (const k of keys) if (!STR[l][k]) missing.push(`${l}:${k}`);
+  for (const l of LANGS.map((x) => x.id)) for (const k of keys) if (!STR[l] || !STR[l][k]) missing.push(`${l}:${k}`);
   assert.deepEqual(missing, []);
-  for (const l of ['de', 'it', 'es', 'fr']) for (const k of ['beginner', 'standard']) assert.ok(STR[l]['diffSub_' + k], `${l}:diffSub_${k}`);
+  for (const l of LANGS.map((x) => x.id)) for (const k of ['beginner', 'standard', 'expert', 'master']) assert.ok(STR[l]['diffSub_' + k], `${l}:diffSub_${k}`);
 });
 
 test('the release number on the menu matches the service-worker cache', () => {

@@ -182,11 +182,11 @@ h1.title span{display:block}
 .tag{margin-top:10px;font-size:15px;color:var(--ink2);max-width:210px;line-height:1.35;position:relative}
 .packs{display:flex;gap:10px;flex:none;margin:0 calc(-1 * var(--padx));padding:2px var(--padx) 4px;overflow-x:auto;scrollbar-width:none;scroll-snap-type:x proximity}
 .packs::-webkit-scrollbar{display:none}
-.pack{flex:none;width:136px;min-height:84px;border-radius:22px;padding:12px;position:relative;overflow:hidden;display:flex;flex-direction:column;justify-content:flex-end;text-align:left;scroll-snap-align:start}
+.pack{flex:none;width:136px;min-height:84px;border-radius:22px;padding:34px 12px 12px;position:relative;overflow:hidden;display:flex;flex-direction:column;justify-content:flex-end;text-align:start;scroll-snap-align:start}
 .pack b{font-size:16px;font-weight:700;letter-spacing:-.02em;line-height:1.15}
 .pack span.s{font-size:12px;color:var(--ink2)}
 .pack.on{background:linear-gradient(150deg,var(--goldtint),var(--glass));border:1.5px solid var(--gold1);box-shadow:0 10px 30px var(--goldglow),inset 0 1px 0 var(--hi)}
-.pack[data-pack]::before{position:absolute;left:10px;top:8px;font-size:17px;letter-spacing:2px}   /* a pack's flags show whether or not it is the selected one */
+.pack[data-pack]::before{position:absolute;inset-inline-start:10px;top:8px;font-size:17px;letter-spacing:2px}   /* a pack's flags show whether or not it is the selected one */
 .pack[data-pack=countries]::before{content:"🇯🇵🇧🇷🇰🇪🇲🇽"}
 .pack[data-pack=states]::before{content:"🇺🇸";letter-spacing:0}
 .pack[data-pack=capitals]::before{content:"🏛️";letter-spacing:0}
@@ -399,7 +399,7 @@ input[type=number]::-webkit-outer-spin-button,input[type=number]::-webkit-inner-
 @media (max-height:700px){
   h1.title{font-size:36px}
   .tag{margin-top:6px;font-size:14px}
-  .pack{min-height:70px;padding:10px}
+  .pack{min-height:70px;padding:32px 10px 10px}
   .mode{min-height:56px;padding:8px 14px}
   .recpill{padding:6px 14px}
   .hero img.globe{width:240px;height:240px;top:calc(-44px - var(--hp))}
@@ -586,7 +586,7 @@ html[data-motion=reduce] .rays,html[data-motion=reduce] .confetti{display:none}
 
 /* ============ PROJECT X — the game's own pieces, on the Bidding Wars tokens ============ */
 /* clue list in the dock */
-.pxclues{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:7px;max-height:min(36vh,300px);overflow:auto;text-align:left}
+.pxclues{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:7px;max-height:min(36vh,300px);overflow:auto;text-align:start}
 .pxclues li{display:grid;grid-template-columns:28px 1fr;gap:10px;align-items:start;padding:10px 12px;border-radius:16px;background:var(--glass);border:1px solid var(--stroke);font-size:15.5px;line-height:1.35}
 .pxclues .n{width:28px;height:28px;border-radius:50%;display:grid;place-items:center;font:800 13px/1 var(--round);background:var(--glass2);color:var(--ink2)}
 .pxclues li.cur{border-color:var(--gold1);background:var(--goldtint)}
@@ -645,3 +645,7 @@ html[data-motion=reduce] .rays,html[data-motion=reduce] .confetti{display:none}
 .aud.pxdraw .aud-l{flex:1 1 auto;min-height:0;display:flex}
 .aud.pxdraw .aud-r{align-self:center}
 .aud.pxdraw .pxdrawstage{flex:1 1 auto;min-height:200px}
+/* Clue screen on a short stage (long clue list, small phone): drop the title,
+   then the cost note, so the timer ring and the clock never overlap the seats. */
+@container (max-height: 300px) { .stage > .head { display: none } }
+@container (max-height: 230px) { .stage > .taunt { display: none } }

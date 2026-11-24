@@ -4,9 +4,9 @@
 // A tier short of clues borrows the vaguer tiers' leftovers (a harder clue in an
 // easier slot is fine); tier 5 only takes give-aways, each true of one place.
 import { DRIVE_LEFT, MONARCHY, GOV_UNCLEAR, EU, SUMMER_OLYMPICS, WORLD_CUP } from './lists.js';
+import { LANGS, NON_LATIN } from '../../engine/names.js';
 
 export const PER_TIER = 4;
-const LANGS = ['en', 'de', 'it', 'es', 'fr'];
 
 export const slug = (s) =>
   String(s)
@@ -30,7 +30,7 @@ export function currencyFact(names) {
   const n = names[0]; // the country's own currency comes first in the data
   for (const [fam, re] of FAMILIES) if (n && re.test(n)) return { family: fam };
   if (!n) return null;
-  const word = n.split(' ').pop();
+  const word = n.replace(/ soberano$/i, '').split(' ').pop(); // Venezuelan bolívar soberano → bolívar
   return word && word.length > 2 ? { word } : null;
 }
 
@@ -73,25 +73,16 @@ function shuffled(list, seed) {
 function fill(frame, values) {
   const o = {};
   for (const l of LANGS) {
+    if (typeof frame[l] !== 'string') continue; // untranslated: the pack validator reports it
     const s = frame[l].replaceAll('{x}', values[l]);
     o[l] = s.charAt(0).toUpperCase() + s.slice(1);
   }
   return o;
 }
 
-function popText(pop, l, frames) {
-  const loc = { en: 'en-GB', de: 'de-DE', it: 'it-IT', es: 'es-ES', fr: 'fr-FR' }[l];
-  if (pop >= 1.5) {
-    const n = pop >= 10 ? Math.round(pop) : Math.round(pop * 10) / 10;
-    return frames.million[l].replace('{n}', new Intl.NumberFormat(loc).format(n));
-  }
-  if (pop >= 0.95) return frames.millionOne[l];
-  const k = pop >= 0.1 ? Math.round(pop * 100) * 10000 : Math.round(pop * 1000) * 1000;
-  return new Intl.NumberFormat(loc, { useGrouping: true }).format(Math.max(k, 1000)).replace(/ /g, ' ');
-}
 
 /**
- * Facts, candidate clues per tier and the round-end line for one country.
+ * Facts and candidate clues per tier for one country.
  * @param id ISO alpha-3 (Kosovo: UNK), s its source entry, geo its outline
  *        entry, all every source entry, frames the per-language sentences,
  *        vocabLangs official languages that have words in templates.js
@@ -169,7 +160,9 @@ export function autoItem(id, s, geo, all, frames, vocabLangs) {
   for (const l of s.official.filter((x) => vocabLangs.has(x)).slice(0, 2)) c[3].push(['official', l]);
   if (cur?.word) c[3].push(['currency_word', cur.word]);
   if (lat[1] > 0 && lat[1] < 60) c[3].push(['lat_below', Math.ceil(lat[1] / 5) * 5]);
-  const N = s.names;
+  // Name clues read the name in the player's language; in a non-Latin script they
+  // read the English name (the frames say so).
+  const N = Object.fromEntries(LANGS.map((l) => [l, NON_LATIN.includes(l) ? s.names.en : s.names[l]]));
   if (LANGS.every((l) => oneWord(N[l]))) {
     free(3, 'letters', fill(frames.letters, Object.fromEntries(LANGS.map((l) => [l, letters(N[l]).length]))));
     if (LANGS.every((l) => N[l].length >= 5)) free(3, 'ending', fill(frames.ending, Object.fromEntries(LANGS.map((l) => [l, N[l].slice(-2).toLowerCase()]))));
@@ -180,7 +173,7 @@ export function autoItem(id, s, geo, all, frames, vocabLangs) {
   for (const b of nb.slice(1, 3)) c[4].push(['neighbour', b]);
   free(4, 'initial', fill(frames.initial, Object.fromEntries(LANGS.map((l) => [l, letters(N[l])[0].toUpperCase()]))));
   if (s.capital) {
-    const C = s.capital;
+    const C = Object.fromEntries(LANGS.map((l) => [l, NON_LATIN.includes(l) ? s.capital.en : s.capital[l]]));
     free(4, 'cap-initial', fill(frames.capInitial, Object.fromEntries(LANGS.map((l) => [l, letters(C[l])[0].toUpperCase()]))));
     if (LANGS.every((l) => oneWord(C[l]))) free(4, 'cap-letters', fill(frames.capLetters, Object.fromEntries(LANGS.map((l) => [l, letters(C[l]).length]))));
   }
@@ -199,12 +192,7 @@ export function autoItem(id, s, geo, all, frames, vocabLangs) {
     c[5].unshift(['idd', s.idd]);
   }
 
-  const fact = {};
-  for (const l of LANGS) {
-    const pop = popText(s.pop, l, frames);
-    fact[l] = s.capital ? frames.fact[l].replace('{cap}', s.capital[l]).replace('{pop}', pop) : frames.factNoCap[l].replace('{pop}', pop);
-  }
-  return { facts, candidates: c, fact };
+  return { facts, candidates: c };
 }
 
 /**

@@ -1,12 +1,16 @@
-// Name matching and autocomplete across all five languages.
+// Name matching and autocomplete across every language of the game.
 
-export const LANGS = Object.freeze(['en', 'de', 'it', 'es', 'fr']);
+export const LANGS = Object.freeze(['en', 'de', 'it', 'es', 'fr', 'pt', 'id', 'zh', 'hi', 'ja', 'ko', 'ar', 'th']);
+/** Languages written in a script other than Latin. */
+export const NON_LATIN = Object.freeze(['zh', 'hi', 'ja', 'ko', 'ar', 'th']);
 
-/** Fold a name for comparison: no accents, case, punctuation or articles. */
+/** Fold a name for comparison: no accents, case, punctuation or articles. Letters of
+ * every script are kept (NFC, so Hangul, kana and Devanagari stay whole). */
 export function fold(text) {
   return String(text ?? '')
     .normalize('NFKD')
     .replace(/[̀-ͯ]/g, '')
+    .normalize('NFC')
     .toLowerCase()
     .replace(/ß/g, 'ss')
     .replace(/æ/g, 'ae')
@@ -14,7 +18,7 @@ export function fold(text) {
     .replace(/ø/g, 'o')
     .replace(/&/g, ' and ')
     .replace(/['’`´.]/g, '')
-    .replace(/[^a-z0-9]+/g, ' ')
+    .replace(/[^\p{L}\p{M}\p{N}]+/gu, ' ')
     .trim()
     .replace(/^(the|la|le|les|el|los|las|il|lo|gli|i|die|der|das|l) /, '');
 }
