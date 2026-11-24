@@ -225,16 +225,47 @@ export function hasCoords(item) {
  * each tier's pool (rng: a seeded generator), skipping sentences in `shown`
  * (English text) while the tier has others. Returns indices into item.clues.
  */
+// Kinds of fact that say much the same thing: a round shows at most one of each
+// when it can (a second latitude or size clue mostly repeats the first).
+const FAMILY = {
+  latMin: 'lat', latMax: 'lat', southOf: 'lat', latRange: 'lat', hemisphere: 'lat',
+  tropics: 'lat', equator: 'lat', zone: 'lat',
+  size: 'area', areaRankWorld: 'area',
+  continent: 'region', subregion: 'region',
+  nameLetters: 'name', nameEnd: 'name', nameWords: 'name', nameInitial: 'name',
+  capital: 'capital', capLetters: 'capital', capInitial: 'capital',
+  official: 'language', lang: 'language', native: 'language',
+};
+
+export function clueFamily(clue) {
+  const t = clue && clue.test;
+  if (!t || !t.f) return 'text:' + (clue && clue.text && clue.text.en);
+  if (t.f === 'tags') return 'tag:' + t.has;
+  if (t.f.startsWith('areaRank_')) return 'area';
+  return FAMILY[t.f] || t.f;
+}
+
 export function pickClues(item, rng, shown = new Set()) {
   const out = [];
+  const used = new Set();
   for (let tier = 1; tier <= TIERS; tier++) {
     const all = [];
     item.clues.forEach((c, k) => {
       if (c.tier === tier) all.push(k);
     });
-    const fresh = all.filter((k) => !shown.has(item.clues[k].text.en));
-    const pool = fresh.length ? fresh : all;
-    out.push(pool[rng.int(pool.length)]);
+    const fresh = (k) => !shown.has(item.clues[k].text.en);
+    const newFam = (k) => !used.has(clueFamily(item.clues[k]));
+    // Never a sentence already seen this game if avoidable; then a new kind of fact.
+    const tries = [
+      all.filter((k) => fresh(k) && newFam(k)),
+      all.filter(fresh),
+      all.filter(newFam),
+      all,
+    ];
+    const pool = tries.find((x) => x.length);
+    const k = pool[rng.int(pool.length)];
+    out.push(k);
+    used.add(clueFamily(item.clues[k]));
   }
   return out;
 }

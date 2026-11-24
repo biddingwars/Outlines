@@ -248,3 +248,29 @@ test('places from recent games come last; each game still draws from half the po
   const a = createGame(world, { seats: [{ kind: 'human' }, { kind: 'bot' }], rounds: 10, difficulty: 'standard', seed: 10, recent });
   assert.notDeepEqual(a.places, s.places);
 });
+
+test('a round shows at most one clue of each kind when the pool allows', async () => {
+  const { pickClues, clueFamily } = await import('../engine/pack.js');
+  let rounds = 0;
+  let repeats = 0;
+  for (const it of world.items) {
+    for (let s = 1; s <= 5; s++) {
+      const ks = pickClues(it, createRng(s, it.id));
+      const used = new Set();
+      ks.forEach((k, i) => {
+        const fam = clueFamily(it.clues[k]);
+        // a repeat is allowed only when that tier had nothing of a new kind
+        if (used.has(fam)) {
+          repeats++;
+          const tier = it.clues[k].tier;
+          const other = it.clues.some((c) => c.tier === tier && !used.has(clueFamily(c)));
+          assert.ok(!other, `${it.id} tier ${tier} repeats ${fam}`);
+        }
+        used.add(fam);
+      });
+      rounds++;
+    }
+  }
+  // Bangladesh once showed three latitude clues in one round (beta log 2)
+  assert.ok(repeats / rounds < 0.15, `repeats in ${repeats}/${rounds} rounds`);
+});
