@@ -535,7 +535,7 @@
     maxSpan: 40000, // raster work budget: total rows crossed by the drawing's edges
     scales: [0.92, 0.96, 1, 1.04, 1.08],
     shifts: [-0.04, 0, 0.04], // in target max-radii
-    // Tilts tried (cos, sin) for -30° … +30°: a fixed table, so scoring never depends on Math.cos.
+    // Tilts tried (cos, sin) for -50° … +50°: a fixed table, so scoring never depends on Math.cos.
     rotations: [
       [1, 0],
       [0.984807753012, -0.173648177667],
@@ -544,6 +544,10 @@
       [0.939692620786, 0.342020143326],
       [0.866025403784, -0.5],
       [0.866025403784, 0.5],
+      [0.766044443119, -0.642787609687],
+      [0.766044443119, 0.642787609687],
+      [0.642787609687, -0.766044443119],
+      [0.642787609687, 0.766044443119],
     ],
     samples: 256, // boundary samples per shape for the gap measure
     islandShare: 0.35, // drawn shapes smaller than this share of the biggest are ignored
@@ -820,13 +824,33 @@
 
     // 1. Which way round? A hand-drawn map is rarely held perfectly north-up:
     //    try a few tilts (fixed table, so every engine computes the same thing).
+    //    Coarse first (every other entry of the table: 0°, ±20°, ±40°), then the
+    //    neighbours of the best one (±10° from it), so ±50° costs what ±30° did.
     let bestRot = null;
-    for (const rot of o.rotations) {
+    const tried = new Set();
+    const tryRot = (k) => {
+      if (k < 0 || k >= o.rotations.length || tried.has(k)) return;
+      tried.add(k);
+      const rot = o.rotations[k];
       const work = rotate(base, rot);
       for (const dx of o.shifts) for (const dy of o.shifts) {
         const f = fitAt(work, 1, dx, dy);
-        if (!bestRot || f.iou > bestRot.iou) bestRot = { iou: f.iou, rot, work };
+        if (!bestRot || f.iou > bestRot.iou) bestRot = { iou: f.iou, rot, work, k };
       }
+    };
+    // table order: 0, -10, +10, -20, +20, … so entry k ± 2 is the next tilt out
+    for (let k = 0; k < o.rotations.length; k += k === 0 ? 3 : 4) {
+      tryRot(k);
+      if (k > 0) tryRot(k + 1);
+    }
+    const near = bestRot.k;
+    if (near === 0) {
+      tryRot(1);
+      tryRot(2);
+    } else {
+      tryRot(near - 2);
+      tryRot(near + 2);
+      if (near <= 2) tryRot(0);
     }
     // 2. Size and position at that tilt, then one refinement pass at half step.
     const work = bestRot.work;
@@ -1059,8 +1083,10 @@
   //   same    array fact holds exactly the listed values (any order)
   //   gte     number fact is at least value
   //   lte     number fact is at most value
+  //   within  number fact is in the range [lo, hi]
+  //   inside  range fact [a, b] lies within [lo, hi]
 
-  const OPS = ['eq', 'ne', 'has', 'lacks', 'all', 'any', 'count', 'in', 'same', 'gte', 'lte'];
+  const OPS = ['eq', 'ne', 'has', 'lacks', 'all', 'any', 'count', 'in', 'same', 'gte', 'lte', 'within', 'inside'];
 
   function opOf(test) {
     return OPS.find((op) => op in test) ?? null;
@@ -1100,6 +1126,10 @@
         return typeof v === 'number' && v >= x;
       case 'lte':
         return typeof v === 'number' && v <= x;
+      case 'within':
+        return typeof v === 'number' && Array.isArray(x) && v >= x[0] && v <= x[1];
+      case 'inside':
+        return !!arr && arr.length === 2 && Array.isArray(x) && arr[0] >= x[0] && arr[1] <= x[1];
       default:
         return undefined;
     }
@@ -1134,7 +1164,7 @@
    * An entry is one of:
    *   { text, test, tier? }             written out (tier defaults to position + 1)
    *   [tier, templateName, param?]       from pack.templates, words from pack.vocab
-   *   [tier, slug, { en, de, … }]       free text; its test is { f: 'tags', has: slug }
+   *   [tier, slug, { en, de, … }, test?] free text; its test is `test`, else { f: 'tags', has: slug }
    * Free-text slugs are added to the item's facts.tags, so the bot can use them.
    */
   function expandPack(pack) {
@@ -1169,7 +1199,9 @@
           return { tier, text, test: { f: tpl.f, [tpl.op]: value } };
         }
         tags.add(name);
-        return { tier, text: arg, test: { f: 'tags', has: name } };
+        // a free sentence may carry its own test ([tier, slug, text, test]); else its tag
+        const own = c[3] && typeof c[3] === 'object' && typeof c[3].f === 'string' ? c[3] : null;
+        return { tier, text: arg, test: own ?? { f: 'tags', has: name } };
       });
       return { ...it, facts: { ...it.facts, tags: [...tags] }, clues };
     });
@@ -1425,12 +1457,14 @@
     }
     const wrong = new Set(view.wrong);
     let cands = view.candidates.filter((c) => !wrong.has(c.id));
-    const narrowed = cands.filter((c) => understood.every((t) => evalTest(t, c.facts) !== false));
+    // A place whose facts do not show a clue to be true is ruled out (the answer's own
+    // facts always do; facts only some places have, like language, cannot keep others in).
+    const narrowed = cands.filter((c) => understood.every((t) => evalTest(t, c.facts) === true));
     // If its memory let it down and nothing fits, fall back to the last clue alone.
     if (narrowed.length) cands = narrowed;
     else if (view.tests.length) {
       const last = view.tests[view.tests.length - 1];
-      const f = cands.filter((c) => evalTest(last, c.facts) !== false);
+      const f = cands.filter((c) => evalTest(last, c.facts) === true);
       if (f.length) cands = f;
     }
     if (!cands.length) return { type: 'wait', confidence: 0, remaining: 0 };

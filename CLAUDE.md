@@ -23,7 +23,7 @@ outlines), `tools/`, `tests/`, `docs/`. The game never references them.
 - `npm run build` does both; `tests/shell.test.js` fails if either is stale.
 
 ## `sw.js` — bump `CACHE` on every deploy that touches a cached file
-`const CACHE = 'project-x-v6'` and `CONFIG.version` in `platform.js` must move
+`const CACHE = 'project-x-v7'` and `CONFIG.version` in `platform.js` must move
 together (the test checks). Without the bump, installed apps never see the change.
 
 ## Clues
@@ -37,6 +37,12 @@ Clues are placed by how many of the 196 countries they fit (`assignTiers` in
 Clues fitting more than 100 countries ("It is a republic") are not used, and a give-away
 never comes before tier 4. Hand-written clues stay, except template clues that are far too
 general or give the place away early. `tests/pack.test.js` checks the limits.
+Every clue has a test the bot can check: computed clues (name letters and initials, size
+ranks, latitude bands) carry real tests on English-name facts; only hand-written sentences
+and the scrambled name fall back to a tag (they name the place). Name clues are used only
+when they say the same in all thirteen languages, and one that singles a place out in any
+language comes at tier 4 at the earliest. The bot rules out a place unless its facts show
+a clue to be true (facts only the 20 hand-written countries have cannot keep others in).
 Within one game no clue sentence is shown twice while its tier has another one, and places
 from the player's recent games (kept in `record:v1`) are dealt last; every game still draws
 from at least half of the pool at random.
@@ -81,7 +87,9 @@ Guide for testers: `docs/BETA-TESTING.md`.
     scripts, and say so.
   - Use CSS logical properties (`inset-inline-start`, `text-align:start`) so Arabic mirrors.
 - The engine is pure: no DOM, storage or timers (`tests/purity.test.js`).
-- Scoring is tuned by simulation (`npm run sim`, `npm run tune`), never by feel.
+- Scoring is tuned by simulation (`npm run sim`, `npm run tune`), never by feel. The judge
+  forgives a tilt of up to ±50° (beta logs showed upright drawings of diagonal countries);
+  `tests/fixtures/beta-drawings.json` keeps those drawings as a regression test.
 
 ## Test build
 `node tools/make-artifact.mjs` → `dist/` (one page plus its images) for a shared test link.

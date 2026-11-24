@@ -14,7 +14,7 @@ for (const [key, strat] of Object.entries(STRATEGIES).filter(([, s]) => s.blind)
 }
 
 test('a decent player can beat the bot, but not always', () => {
-  const r = winRate(world, STRATEGIES.decentPlayer, { games: 24, rounds: 5, seed: 11, difficulty: 'beginner' });
+  const r = winRate(world, STRATEGIES.decentPlayer, { games: 80, rounds: 5, seed: 11, difficulty: 'beginner' });
   assert.ok(r.rate > 0.2 && r.rate < 1, `${(r.rate * 100).toFixed(0)} %`);
 });
 

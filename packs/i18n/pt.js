@@ -60,6 +60,7 @@ export default {
     capInitial: 'O nome da sua capital começa com {x}.',
     capLetters: 'O nome da sua capital tem {x} letras.',
     areaRank: 'Em área, fica entre o {lo}º e o {hi}º lugar entre os países da {x} (1 = o maior).',
+    areaRankWorld: 'Em área, fica entre o {lo}º e o {hi}º lugar entre todos os países do mundo (1 = o maior).',
     latBandN: 'Fica inteiramente entre as latitudes {lo}° N e {hi}° N.',
     latBandS: 'Fica inteiramente entre as latitudes {lo}° S e {hi}° S.',
     scrambled: 'Desembaralhe o nome: {x}',

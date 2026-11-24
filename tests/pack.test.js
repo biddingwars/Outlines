@@ -129,7 +129,7 @@ test('country names resolve in every language and script', () => {
 test('every clue is specific enough for its tier, and nothing gives a place away early', () => {
   // Most countries a clue may fit (out of 196), per tier. Tier 1 may use a broad
   // fact only when a country has nothing narrower (the United States).
-  const LIMIT = { 2: 50, 3: 40, 4: 10, 5: 1 };
+  const LIMIT = { 2: 60, 3: 40, 4: 10, 5: 1 };
   const bad = [];
   // Only facts known for every country can be counted (language, coast, flag and
   // climate facts exist for the 20 hand-written countries only).

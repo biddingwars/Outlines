@@ -20,7 +20,7 @@ export const JUDGE_DEFAULTS = Object.freeze({
   maxSpan: 40000, // raster work budget: total rows crossed by the drawing's edges
   scales: [0.92, 0.96, 1, 1.04, 1.08],
   shifts: [-0.04, 0, 0.04], // in target max-radii
-  // Tilts tried (cos, sin) for -30° … +30°: a fixed table, so scoring never depends on Math.cos.
+  // Tilts tried (cos, sin) for -50° … +50°: a fixed table, so scoring never depends on Math.cos.
   rotations: [
     [1, 0],
     [0.984807753012, -0.173648177667],
@@ -29,6 +29,10 @@ export const JUDGE_DEFAULTS = Object.freeze({
     [0.939692620786, 0.342020143326],
     [0.866025403784, -0.5],
     [0.866025403784, 0.5],
+    [0.766044443119, -0.642787609687],
+    [0.766044443119, 0.642787609687],
+    [0.642787609687, -0.766044443119],
+    [0.642787609687, 0.766044443119],
   ],
   samples: 256, // boundary samples per shape for the gap measure
   islandShare: 0.35, // drawn shapes smaller than this share of the biggest are ignored
@@ -305,13 +309,33 @@ export function judge(strokes, target, opts = {}) {
 
   // 1. Which way round? A hand-drawn map is rarely held perfectly north-up:
   //    try a few tilts (fixed table, so every engine computes the same thing).
+  //    Coarse first (every other entry of the table: 0°, ±20°, ±40°), then the
+  //    neighbours of the best one (±10° from it), so ±50° costs what ±30° did.
   let bestRot = null;
-  for (const rot of o.rotations) {
+  const tried = new Set();
+  const tryRot = (k) => {
+    if (k < 0 || k >= o.rotations.length || tried.has(k)) return;
+    tried.add(k);
+    const rot = o.rotations[k];
     const work = rotate(base, rot);
     for (const dx of o.shifts) for (const dy of o.shifts) {
       const f = fitAt(work, 1, dx, dy);
-      if (!bestRot || f.iou > bestRot.iou) bestRot = { iou: f.iou, rot, work };
+      if (!bestRot || f.iou > bestRot.iou) bestRot = { iou: f.iou, rot, work, k };
     }
+  };
+  // table order: 0, -10, +10, -20, +20, … so entry k ± 2 is the next tilt out
+  for (let k = 0; k < o.rotations.length; k += k === 0 ? 3 : 4) {
+    tryRot(k);
+    if (k > 0) tryRot(k + 1);
+  }
+  const near = bestRot.k;
+  if (near === 0) {
+    tryRot(1);
+    tryRot(2);
+  } else {
+    tryRot(near - 2);
+    tryRot(near + 2);
+    if (near <= 2) tryRot(0);
   }
   // 2. Size and position at that tilt, then one refinement pass at half step.
   const work = bestRot.work;

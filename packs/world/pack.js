@@ -89,7 +89,11 @@ function fitsOf(id) {
       if (!meta || meta.unique) return 1;
       if (meta.count) return meta.count;
       if (meta.pred) return allFacts.filter(meta.pred).length;
-      let most = 0; // the language in which the clue is least specific counts
+      // The clue says the same in every language, but other names differ: it is as
+      // vague as in the language where most countries share it, and a give-away if
+      // it singles the place out in any language (1.5: tier 4, never tier 5).
+      let fewest = Infinity;
+      let most = 0;
       for (const l of LANGS) {
         const mine = meta.f(nameIn(id, l, meta.src));
         let n = 0;
@@ -97,9 +101,10 @@ function fitsOf(id) {
           const s = nameIn(o, l, meta.src);
           if (s && meta.f(s) === mine) n++;
         }
+        fewest = Math.min(fewest, n);
         most = Math.max(most, n);
       }
-      return most;
+      return fewest === 1 ? 1.5 : most;
     }
     if (typeof e[1] === 'object' && !Array.isArray(e[1])) return 1; // a hand-written sentence
     const test = tplTest(e);

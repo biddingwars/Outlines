@@ -21,7 +21,7 @@ const COMMA = { zh: '、', ja: '、', ar: '، ' };
  * An entry is one of:
  *   { text, test, tier? }             written out (tier defaults to position + 1)
  *   [tier, templateName, param?]       from pack.templates, words from pack.vocab
- *   [tier, slug, { en, de, … }]       free text; its test is { f: 'tags', has: slug }
+ *   [tier, slug, { en, de, … }, test?] free text; its test is `test`, else { f: 'tags', has: slug }
  * Free-text slugs are added to the item's facts.tags, so the bot can use them.
  */
 export function expandPack(pack) {
@@ -56,7 +56,9 @@ export function expandPack(pack) {
         return { tier, text, test: { f: tpl.f, [tpl.op]: value } };
       }
       tags.add(name);
-      return { tier, text: arg, test: { f: 'tags', has: name } };
+      // a free sentence may carry its own test ([tier, slug, text, test]); else its tag
+      const own = c[3] && typeof c[3] === 'object' && typeof c[3].f === 'string' ? c[3] : null;
+      return { tier, text: arg, test: own ?? { f: 'tags', has: name } };
     });
     return { ...it, facts: { ...it.facts, tags: [...tags] }, clues };
   });

@@ -72,12 +72,14 @@ export function decide(view, mind) {
   }
   const wrong = new Set(view.wrong);
   let cands = view.candidates.filter((c) => !wrong.has(c.id));
-  const narrowed = cands.filter((c) => understood.every((t) => evalTest(t, c.facts) !== false));
+  // A place whose facts do not show a clue to be true is ruled out (the answer's own
+  // facts always do; facts only some places have, like language, cannot keep others in).
+  const narrowed = cands.filter((c) => understood.every((t) => evalTest(t, c.facts) === true));
   // If its memory let it down and nothing fits, fall back to the last clue alone.
   if (narrowed.length) cands = narrowed;
   else if (view.tests.length) {
     const last = view.tests[view.tests.length - 1];
-    const f = cands.filter((c) => evalTest(last, c.facts) !== false);
+    const f = cands.filter((c) => evalTest(last, c.facts) === true);
     if (f.length) cands = f;
   }
   if (!cands.length) return { type: 'wait', confidence: 0, remaining: 0 };

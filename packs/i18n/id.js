@@ -60,6 +60,7 @@ export default {
     capInitial: 'Nama ibu kotanya diawali {x}.',
     capLetters: 'Nama ibu kotanya terdiri dari {x} huruf.',
     areaRank: 'Menurut luasnya, negara ini berada di peringkat {lo}–{hi} di antara negara-negara {x} (1 = terbesar).',
+    areaRankWorld: 'Menurut luasnya, negara ini berada di peringkat {lo}–{hi} di antara semua negara di dunia (1 = terbesar).',
     latBandN: 'Seluruhnya terletak antara {lo}° LU dan {hi}° LU.',
     latBandS: 'Seluruhnya terletak antara {lo}° LS dan {hi}° LS.',
     scrambled: 'Susun ulang huruf namanya: {x}',

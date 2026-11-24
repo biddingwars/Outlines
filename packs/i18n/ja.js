@@ -61,6 +61,7 @@ export default {
     capInitial: '首都の英語名は {x} で始まります。',
     capLetters: '首都の英語名は {x} 文字です。',
     areaRank: '面積は{x}の国の中で{lo}〜{hi}位です（1位が最大）。',
+    areaRankWorld: '面積は世界のすべての国の中で{lo}〜{hi}位です（1位が最大）。',
     latBandN: '国土はすべて北緯{lo}度から{hi}度のあいだにあります。',
     latBandS: '国土はすべて南緯{lo}度から{hi}度のあいだにあります。',
     scrambled: '文字を並べ替えて英語名にしてください：{x}',

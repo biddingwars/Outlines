@@ -133,3 +133,14 @@ test('an island drawn next to the mainland costs nothing (Italy with Sicily)', (
   const withIsland = judge([ring, island], t).accuracy;
   assert.ok(Math.abs(alone - withIsland) < 0.02, `${alone} vs ${withIsland}`);
 });
+
+test('real beta drawings drawn upright are not punished for the tilt', async () => {
+  const { readFileSync } = await import('node:fs');
+  const { world } = await import('./helpers.js');
+  const fx = JSON.parse(readFileSync(new URL('./fixtures/beta-drawings.json', import.meta.url), 'utf8'));
+  const want = { ITA: 0.35, LTU: 0.72 }; // were 0.18 and 0.67 with ±30°
+  for (const d of fx.drawings) {
+    const res = judge(d.rings.map((r) => [...r, r[0]]), world.targetFor(d.id));
+    assert.ok(res.accuracy >= want[d.id], `${d.id}: ${res.accuracy}`);
+  }
+});

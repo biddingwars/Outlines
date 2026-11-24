@@ -61,6 +61,7 @@ export default {
     capInitial: '它首都的英文名以 {x} 开头。',
     capLetters: '它首都的英文名有 {x} 个字母。',
     areaRank: '按面积，它在{x}各国中排第 {lo}–{hi} 位（第 1 位最大）。',
+    areaRankWorld: '按面积，它在全世界所有国家中排第 {lo}–{hi} 位（第 1 位最大）。',
     latBandN: '它完全位于北纬 {lo}° 到 {hi}° 之间。',
     latBandS: '它完全位于南纬 {lo}° 到 {hi}° 之间。',
     scrambled: '把这些字母重新排列成它的英文名：{x}',

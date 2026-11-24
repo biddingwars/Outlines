@@ -14,8 +14,10 @@
 //   same    array fact holds exactly the listed values (any order)
 //   gte     number fact is at least value
 //   lte     number fact is at most value
+//   within  number fact is in the range [lo, hi]
+//   inside  range fact [a, b] lies within [lo, hi]
 
-export const OPS = ['eq', 'ne', 'has', 'lacks', 'all', 'any', 'count', 'in', 'same', 'gte', 'lte'];
+export const OPS = ['eq', 'ne', 'has', 'lacks', 'all', 'any', 'count', 'in', 'same', 'gte', 'lte', 'within', 'inside'];
 
 export function opOf(test) {
   return OPS.find((op) => op in test) ?? null;
@@ -55,6 +57,10 @@ export function evalTest(test, facts) {
       return typeof v === 'number' && v >= x;
     case 'lte':
       return typeof v === 'number' && v <= x;
+    case 'within':
+      return typeof v === 'number' && Array.isArray(x) && v >= x[0] && v <= x[1];
+    case 'inside':
+      return !!arr && arr.length === 2 && Array.isArray(x) && arr[0] >= x[0] && arr[1] <= x[1];
     default:
       return undefined;
   }

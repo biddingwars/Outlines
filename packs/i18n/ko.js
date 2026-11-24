@@ -61,6 +61,7 @@ export default {
     capInitial: '수도의 영어 이름이 {x}로 시작합니다.',
     capLetters: '수도의 영어 이름은 {x}글자입니다.',
     areaRank: '면적으로 {x} 나라 중 {lo}~{hi}위입니다(1위가 가장 큼).',
+    areaRankWorld: '면적으로 세계 모든 나라 중 {lo}~{hi}위입니다(1위가 가장 큼).',
     latBandN: '국토 전체가 북위 {lo}도와 {hi}도 사이에 있습니다.',
     latBandS: '국토 전체가 남위 {lo}도와 {hi}도 사이에 있습니다.',
     scrambled: '글자를 바로 놓아 영어 이름을 만들어 보세요: {x}',
