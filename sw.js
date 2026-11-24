@@ -1,7 +1,7 @@
 /* Service worker — the whole game is cached on first visit, then served from
    cache. After that it runs with no connection at all, which is the point. */
 
-const CACHE = 'project-x-v10';
+const CACHE = 'project-x-v11';
 
 const SHELL = [
   './',
@@ -28,6 +28,7 @@ const SHELL = [
   './earth.jpg',
   './globe-hero.webp',
   './logo.svg',
+  './favicon.svg',
   './icon-192.png',
   './icon-512.png',
   './icon-512-maskable.png',
