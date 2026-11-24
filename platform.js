@@ -6,7 +6,7 @@
 const CONFIG = {
   /* The release number shown on the menu so anyone can check they have the latest build.
      MUST equal the number in sw.js's CACHE ('project-x-v7' -> 7); test/version.test.js enforces it. */
-  version: 12,
+  version: 13,
 
   /* Online 1 vs 1 needs a real backend (Firebase, Supabase, PartyKit, …).
      Leave this false until one is wired up in Net.* below — shipping a mode
