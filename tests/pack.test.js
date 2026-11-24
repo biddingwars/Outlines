@@ -89,3 +89,22 @@ test('archipelago items are flagged mainland-only', async () => {
   const w = await loadPack('world');
   for (const it of w.items) if (it.mainShare < 0.8) assert.ok(it.mainlandOnly, it.id);
 });
+
+test('every country has a real fun fact in all five languages', async () => {
+  const { funFacts } = await import('../packs/world/pack.js');
+  const base = (await import('../packs/world/base.js')).default;
+  const crafted = new Set(base.items.map((it) => it.id));
+  const ids = new Set(worldPack.items.map((it) => it.id));
+  for (const id of Object.keys(funFacts)) {
+    assert.ok(ids.has(id), `fun fact for unknown country ${id}`);
+    assert.ok(!crafted.has(id), `${id} already has a fact in base.js`);
+  }
+  for (const it of worldPack.items) {
+    const f = crafted.has(it.id) ? it.fact : funFacts[it.id];
+    assert.ok(f, `${it.id} has no fun fact`);
+    for (const l of LANGS) assert.ok(typeof f[l] === 'string' && f[l].length > 20, `${it.id} fact ${l}`);
+    assert.equal(it.fact, f);
+  }
+  const en = Object.values(funFacts).map((f) => f.en);
+  assert.equal(new Set(en).size, en.length, 'two countries share a fun fact');
+});

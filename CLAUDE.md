@@ -23,7 +23,7 @@ outlines), `tools/`, `tests/`, `docs/`. The game never references them.
 - `npm run build` does both; `tests/shell.test.js` fails if either is stale.
 
 ## `sw.js` — bump `CACHE` on every deploy that touches a cached file
-`const CACHE = 'project-x-v2'` and `CONFIG.version` in `platform.js` must move
+`const CACHE = 'project-x-v3'` and `CONFIG.version` in `platform.js` must move
 together (the test checks). Without the bump, installed apps never see the change.
 
 ## Clues
@@ -42,6 +42,8 @@ World pack = all 196 countries (193 UN members + Vatican City, Kosovo, Taiwan):
 - 20 countries have hand-written pools (`packs/world/clues-*.js`) and fun facts
   (`base.js`); they win over the automatic ones.
 - Templates and their words in five languages: `packs/world/templates.js`.
+- Fun facts ("Did you know?") for the other 176: `packs/world/facts-*.js`, by region;
+  a test checks every country has one in all five languages.
 - Difficulty: beginner (tier 1), standard (≤2), expert (≤3), master (all 196).
 
 ## House rules carried over

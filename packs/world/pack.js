@@ -9,12 +9,18 @@ import rawSource from './source.js';
 import outlines from './outlines.js';
 import { CAPITAL_FIX, NO_CAPITAL } from './lists.js';
 import { autoItem, fillTiers, countryTier, flagEmoji, slug, currencyFact } from './auto.js';
+import fEurope from './facts-europe.js';
+import fAsia from './facts-asia.js';
+import fAfrica from './facts-africa.js';
+import fAmericasOceania from './facts-americas-oceania.js';
 import c1 from './clues-1.js';
 import c2 from './clues-2.js';
 import c3 from './clues-3.js';
 import c4 from './clues-4.js';
 
 const pools = { ...c1, ...c2, ...c3, ...c4 };
+// Fun facts for the countries without a hand-written entry in base.js.
+export const funFacts = { ...fEurope, ...fAsia, ...fAfrica, ...fAmericasOceania };
 const crafted = new Map(base.items.map((it) => [it.id, it]));
 const vocabLangs = new Set(Object.keys(vocab.officialLang));
 
@@ -56,7 +62,7 @@ const items = Object.entries(source).map(([id, s]) => {
     aliases: s.alt.filter((a) => a !== s.iso2 && a.length > 1),
     facts: auto.facts,
     clues,
-    fact: auto.fact,
+    fact: funFacts[id] ?? auto.fact,
   };
   if (geo && geo.share < 0.8) item.mainlandOnly = true;
   return item;
