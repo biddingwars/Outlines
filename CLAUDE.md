@@ -1,4 +1,7 @@
-# Project X — project rules
+# Outlines (Project X) — project rules
+
+The game is called **Outlines**; "Project X" is the repository and code name
+(the `project-x-vN` cache key stays).
 
 Work out a mystery place from clues, then draw its outline from memory.
 Guessing early earns base points (5 down to 1); drawing accurately multiplies them: the multiplier is the accuracy (70% = 70x, perfect = 100x).
@@ -23,7 +26,7 @@ outlines), `tools/`, `tests/`, `docs/`. The game never references them.
 - `npm run build` does both; `tests/shell.test.js` fails if either is stale.
 
 ## `sw.js` — bump `CACHE` on every deploy that touches a cached file
-`const CACHE = 'project-x-v13'` and `CONFIG.version` in `platform.js` must move
+`const CACHE = 'project-x-v14'` and `CONFIG.version` in `platform.js` must move
 together (the test checks). Without the bump, installed apps never see the change.
 
 ## Clues

@@ -1,5 +1,5 @@
 /* ============ ENGINE + PACK BINDINGS ============
-   Project X runs on the Bidding Wars shell: the same screens, sheets, theme,
+   Outlines (working title: Project X) runs on the Bidding Wars shell: the same screens, sheets, theme,
    settings, record, results reveal and globe. Only the game is different.
    The rules (clues, guess checking, the drawing judge, the multiplier, the
    bot, the game state machine) live in engine.js — pure and unit-tested.
@@ -238,7 +238,7 @@ function home() {
     <div class="menu-grid">
       <div class="m-l">
         <div class="hero" data-pk="${SELPACK}"><img class="globe" src="globe-hero.webp" alt="" width="280" height="280" decoding="async">
-          <h1 class="title"><span>Project</span><span class="goldtext">X</span></h1>
+          <h1 class="title"><span class="goldtext">Outlines</span></h1>
           <p class="tag">${esc(t('tagline'))}</p></div>
         <button class="glass recpill" id="mrec" aria-label="${esc(t('record'))}">
           <span class="big num">${REC.won}<i>–</i>${REC.lost}${REC.drawn ? `<i>–</i>${REC.drawn}` : ''}</span>

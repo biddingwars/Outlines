@@ -1,4 +1,4 @@
-# Beta testing Project X
+# Beta testing Outlines
 
 The game can keep a log of your games on your phone so they can be analysed
 afterwards. Nothing is ever sent by the game itself: you decide when to export.

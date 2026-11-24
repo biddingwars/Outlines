@@ -1,4 +1,6 @@
-# Project X (working title)
+# Outlines
+
+(Repository and code name: Project X.)
 
 Work out a mystery place from clues, then draw its outline from memory.
 Guessing fast earns base points, and drawing accurately multiplies them: 70% accuracy = 70x, perfect = 100x.

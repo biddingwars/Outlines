@@ -23,7 +23,7 @@ let out = body
     return inline(f);
   });
 if (/<script src=/.test(out)) throw new Error('a script was not inlined');
-const page = `<title>Project X</title>
+const page = `<title>Outlines</title>
 <meta name="claude:viewport-fit-sides" content="cover">
 <meta name="theme-color" content="#0E0D0B">
 <style>

@@ -1,4 +1,4 @@
-# Project X: architecture and engine API
+# Outlines (Project X): architecture and engine API
 
 Project X: work out a mystery place from clues, then draw its outline from memory.
 Guessing early earns base points (5 down to 1) and drawing accurately multiplies them (1x to 1,000x).

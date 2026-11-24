@@ -1,6 +1,6 @@
 {
-  "name": "Project X",
-  "short_name": "Project X",
+  "name": "Outlines",
+  "short_name": "Outlines",
   "description": "Work out the mystery place from clues, then draw it from memory.",
   "start_url": "./index.html",
   "scope": "./",
