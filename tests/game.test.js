@@ -218,3 +218,33 @@ test('each round shows one clue per tier, hardest first, drawn afresh each game'
   const repeats = [...seen.values()].filter((v) => v.size > 1);
   assert.ok(repeats.length >= 10, `only ${repeats.length} places varied`);
 });
+
+test('a game never shows the same clue sentence twice while a tier has another', () => {
+  for (const seed of [1, 2, 3, 4, 5]) {
+    const s = createGame(world, { seats: [{ kind: 'human' }, { kind: 'bot' }], rounds: 30, difficulty: 'master', seed });
+    const seen = new Map();
+    s.places.forEach((id, r) => {
+      const item = world.byId.get(id);
+      for (const k of s.clueSets[r]) {
+        const text = item.clues[k].text.en;
+        if (seen.has(text)) {
+          // allowed only when every clue of that tier was already shown
+          const tier = item.clues[k].tier;
+          const others = item.clues.filter((c) => c.tier === tier && !seen.has(c.text.en));
+          assert.equal(others.length, 0, `seed ${seed}: "${text}" repeated in round ${r}`);
+        }
+      }
+      for (const k of s.clueSets[r]) seen.set(item.clues[k].text.en, r);
+    });
+  }
+});
+
+test('places from recent games come last; each game still draws from half the pool at random', () => {
+  const pool = poolFor(world, 'standard');
+  const recent = pool.slice(0, 40);
+  const s = createGame(world, { seats: [{ kind: 'human' }, { kind: 'bot' }], rounds: 10, difficulty: 'standard', seed: 9, recent });
+  const held = new Set(recent.slice(-Math.floor(pool.length / 2)));
+  assert.ok(s.places.every((id) => !held.has(id)));
+  const a = createGame(world, { seats: [{ kind: 'human' }, { kind: 'bot' }], rounds: 10, difficulty: 'standard', seed: 10, recent });
+  assert.notDeepEqual(a.places, s.places);
+});

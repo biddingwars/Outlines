@@ -48,6 +48,8 @@ export default {
     lat_below: 'Nenhuma parte dele chega à latitude {x}° N.',
     lat_south: 'Fica inteiramente ao sul da latitude {x}° S.',
     neighbour: 'Um dos países vizinhos: {x}.',
+    neighbours2: 'Dois dos seus países vizinhos: {x}.',
+    neighbours_only: 'Seus únicos vizinhos por terra: {x}.',
     capital_is: 'Sua capital é {x}.',
   },
   frame: {
@@ -57,6 +59,9 @@ export default {
     words: 'Seu nome é formado por {x} palavras.',
     capInitial: 'O nome da sua capital começa com {x}.',
     capLetters: 'O nome da sua capital tem {x} letras.',
+    areaRank: 'Em área, fica entre o {lo}º e o {hi}º lugar entre os países da {x} (1 = o maior).',
+    latBandN: 'Fica inteiramente entre as latitudes {lo}° N e {hi}° N.',
+    latBandS: 'Fica inteiramente entre as latitudes {lo}° S e {hi}° S.',
     scrambled: 'Desembaralhe o nome: {x}',
   },
   voc: {

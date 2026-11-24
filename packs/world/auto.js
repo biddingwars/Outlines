@@ -20,6 +20,17 @@ export const flagEmoji = (cc) => [...cc].map((c) => String.fromCodePoint(0x1f1e6
 const letters = (s) => [...String(s)].filter((ch) => /\p{L}/u.test(ch));
 const oneWord = (s) => /^\p{L}+$/u.test(s);
 
+// What a name clue says about a name (or a capital's name), so pack.js can count
+// how many countries share it in each language.
+const NAME_META = {
+  letters: { src: 'name', f: (s) => letters(s).length },
+  ending: { src: 'name', f: (s) => s.slice(-2).toLowerCase() },
+  words: { src: 'name', f: (s) => s.split(' ').length },
+  initial: { src: 'name', f: (s) => letters(s)[0].toUpperCase() },
+  capInitial: { src: 'cap', f: (s) => letters(s)[0].toUpperCase() },
+  capLetters: { src: 'cap', f: (s) => letters(s).length },
+};
+
 const FAMILIES = [
   ['cfa-franc', /cfa franc/i], ['euro', /^euro$/i], ['dollar', /dollar/i], ['franc', /franc/i], ['peso', /peso/i],
   ['pound', /pound/i], ['dinar', /dinar|denar/i], ['rupee', /rupee/i], ['shilling', /shilling/i], ['krone', /kron|krón/i],
@@ -33,6 +44,8 @@ export function currencyFact(names) {
   const word = n.replace(/ soberano$/i, '').split(' ').pop(); // Venezuelan bolívar soberano → bolívar
   return word && word.length > 2 ? { word } : null;
 }
+
+const contOf = (o) => (o.region === 'Americas' ? (o.subregion === 'South America' ? 'south-america' : 'north-america') : o.region.toLowerCase());
 
 /** Difficulty tier of a country: 1 big and famous … 4 micro-states. */
 export function countryTier(s) {
@@ -87,7 +100,7 @@ function fill(frame, values) {
  *        entry, all every source entry, frames the per-language sentences,
  *        vocabLangs official languages that have words in templates.js
  */
-export function autoItem(id, s, geo, all, frames, vocabLangs) {
+export function autoItem(id, s, geo, all, frames, vocabLangs, continentWords) {
   const cc = s.iso2;
   const cross = geo?.cross ?? [];
   const lat = geo?.lat ?? [0, 0];
@@ -128,7 +141,8 @@ export function autoItem(id, s, geo, all, frames, vocabLangs) {
   if (!s.borders.length && !s.landlocked && s.area < 1e6) facts.islands = true;
 
   const c = { 1: [], 2: [], 3: [], 4: [], 5: [] };
-  const free = (tier, key, text) => c[tier].push([`${id.toLowerCase()}-${key}`, text, true]);
+  // meta tells pack.js how to count the countries a name clue fits (see assignTiers)
+  const free = (tier, key, text, meta) => c[tier].push([`${id.toLowerCase()}-${key}`, text, true, meta]);
   // tier 1: broad facts shared by many places (continent first, the rest in a
   // fixed per-country order so pools differ from one country to the next)
   const t1 = [['people', facts.people], ['size', facts.size], [facts.drive === 'left' ? 'drive_left' : 'drive_right'], [s.landlocked ? 'landlocked' : 'has_coast']];
@@ -148,7 +162,6 @@ export function autoItem(id, s, geo, all, frames, vocabLangs) {
   else if (s.borders.length === 1) c[2].push(['one_border']);
   else c[2].push(['borders_n', s.borders.length]);
   if (cur?.family) c[2].push(['currency_family', cur.family]);
-  if (iddZone) c[2].push(['idd_zone', iddZone]);
   if (facts.islands) c[2].push(['islands']);
   if (facts.worldCup) c[2].push(['worldcup']);
   const narrow = lat[1] - lat[0] <= 15; // spread-out states (overseas parts) get no latitude band
@@ -164,18 +177,50 @@ export function autoItem(id, s, geo, all, frames, vocabLangs) {
   // read the English name (the frames say so).
   const N = Object.fromEntries(LANGS.map((l) => [l, NON_LATIN.includes(l) ? s.names.en : s.names[l]]));
   if (LANGS.every((l) => oneWord(N[l]))) {
-    free(3, 'letters', fill(frames.letters, Object.fromEntries(LANGS.map((l) => [l, letters(N[l]).length]))));
-    if (LANGS.every((l) => N[l].length >= 5)) free(3, 'ending', fill(frames.ending, Object.fromEntries(LANGS.map((l) => [l, N[l].slice(-2).toLowerCase()]))));
+    free(3, 'letters', fill(frames.letters, Object.fromEntries(LANGS.map((l) => [l, letters(N[l]).length]))), NAME_META.letters);
+    if (LANGS.every((l) => N[l].length >= 5)) free(3, 'ending', fill(frames.ending, Object.fromEntries(LANGS.map((l) => [l, N[l].slice(-2).toLowerCase()]))), NAME_META.ending);
   } else if (LANGS.every((l) => /^[\p{L} ]+$/u.test(N[l]) && N[l].split(' ').length > 1)) {
-    free(3, 'words', fill(frames.words, Object.fromEntries(LANGS.map((l) => [l, N[l].split(' ').length]))));
+    free(3, 'words', fill(frames.words, Object.fromEntries(LANGS.map((l) => [l, N[l].split(' ').length]))), NAME_META.words);
   }
   // tier 4: specific facts
-  for (const b of nb.slice(1, 3)) c[4].push(['neighbour', b]);
-  free(4, 'initial', fill(frames.initial, Object.fromEntries(LANGS.map((l) => [l, letters(N[l])[0].toUpperCase()]))));
+  for (const b of nb.slice(1)) c[4].push(['neighbour', b]);
+  // pairs of neighbours, and the full list for countries with few of them
+  const top = nb.slice(0, 4);
+  for (let i = 0; i < top.length; i++) for (let j = i + 1; j < top.length; j++) c[4].push(['neighbours2', [top[i], top[j]]]);
+  if (nb.length >= 2 && nb.length <= 4 && nb.length === s.borders.length) c[4].push(['neighbours_only', nb]);
+  // size rank within its continent, in bands of five (1 = largest)
+  if (continentWords) {
+    const same = Object.values(all).filter((o) => contOf(o) === continent).sort((a, b) => b.area - a.area);
+    const rank = same.indexOf(s) + 1;
+    if (rank > 0 && same.length > 10) {
+      const lo = Math.floor((rank - 1) / 5) * 5 + 1;
+      const hi = Math.min(lo + 4, same.length);
+      const words = continentWords[continent];
+      const rankText = (a, b) => Object.fromEntries(LANGS.map((l) => [l, frames.areaRank[l]?.replace('{lo}', a).replace('{hi}', b).replace('{x}', words[l])]));
+      free(3, 'area-rank', rankText(lo, hi), { count: hi - lo + 1 });
+      const lo2 = Math.floor((rank - 1) / 2) * 2 + 1;
+      const hi2 = Math.min(lo2 + 1, same.length);
+      if (hi2 > lo2 && (lo2 !== lo || hi2 !== hi)) free(4, 'area-rank2', rankText(lo2, hi2), { count: 2 });
+    }
+  }
+  // latitude band on a 5° grid around the whole country
+  const north = lat[0] >= 0;
+  const south = lat[1] <= 0;
+  if (north || south) {
+    const a = Math.floor(Math.abs(north ? lat[0] : lat[1]) / 5) * 5;
+    const b = Math.ceil(Math.abs(north ? lat[1] : lat[0]) / 5) * 5;
+    if (b - a <= 15 && b > a) {
+      const frame = north ? frames.latBandN : frames.latBandS;
+      const lo = north ? a : -b;
+      const hi = north ? b : -a;
+      free(3, 'lat-band', Object.fromEntries(LANGS.map((l) => [l, frame[l]?.replace('{lo}', a).replace('{hi}', b)])), { pred: (f) => f.latMin >= lo && f.latMax <= hi });
+    }
+  }
+  free(4, 'initial', fill(frames.initial, Object.fromEntries(LANGS.map((l) => [l, letters(N[l])[0].toUpperCase()]))), NAME_META.initial);
   if (s.capital) {
     const C = Object.fromEntries(LANGS.map((l) => [l, NON_LATIN.includes(l) ? s.capital.en : s.capital[l]]));
-    free(4, 'cap-initial', fill(frames.capInitial, Object.fromEntries(LANGS.map((l) => [l, letters(C[l])[0].toUpperCase()]))));
-    if (LANGS.every((l) => oneWord(C[l]))) free(4, 'cap-letters', fill(frames.capLetters, Object.fromEntries(LANGS.map((l) => [l, letters(C[l]).length]))));
+    free(4, 'cap-initial', fill(frames.capInitial, Object.fromEntries(LANGS.map((l) => [l, letters(C[l])[0].toUpperCase()]))), NAME_META.capInitial);
+    if (LANGS.every((l) => oneWord(C[l]))) free(4, 'cap-letters', fill(frames.capLetters, Object.fromEntries(LANGS.map((l) => [l, letters(C[l]).length]))), NAME_META.capLetters);
   }
   if (s.idd) c[4].push(['idd', s.idd]);
   // tier 5: give-aways, each true of this country only
@@ -184,7 +229,7 @@ export function autoItem(id, s, geo, all, frames, vocabLangs) {
   if (s.tld) c[5].push(['tld', s.tld]);
   const nat = s.native.find((n) => !fold(N.en).includes(fold(n)) && !fold(n).includes(fold(N.en)) && fold(n));
   if (nat) c[5].push(['native', nat]);
-  free(5, 'scrambled', fill(frames.scrambled, Object.fromEntries(LANGS.map((l) => [l, N[l].split(' ').map((w, k) => scramble(w, hash(id + l + k))).join(' ')]))));
+  free(5, 'scrambled', fill(frames.scrambled, Object.fromEntries(LANGS.map((l) => [l, N[l].split(' ').map((w, k) => scramble(w, hash(id + l + k))).join(' ')]))), { unique: true });
 
   // Too few give-aways (no capital, no native name): the full dialling code is one.
   if (c[5].length < PER_TIER && s.idd) {
@@ -212,4 +257,80 @@ export function fillTiers(c) {
     for (const e of take) clues.push(e[2] === true ? [tier, e[0], e[1]] : [tier, ...e]);
   }
   return { clues, short };
+}
+
+/**
+ * How specific a clue must be for each tier: the most countries it may fit
+ * (out of all 196). Tier 5 gives the place away; clues fitting more than the
+ * tier-1 limit ("It is a republic") say too little and are never used.
+ */
+export const FIT_LIMIT = { 5: 1, 4: 4, 3: 12, 2: 40, 1: 100 };
+const idealTier = (n) => (n <= FIT_LIMIT[5] ? 5 : n <= FIT_LIMIT[4] ? 4 : n <= FIT_LIMIT[3] ? 3 : n <= FIT_LIMIT[2] ? 2 : 1);
+
+// The number of countries a clue of each tier ideally fits (out of 196).
+const TARGET = { 1: 60, 2: 20, 3: 7, 4: 2.5 };
+const kindOf = (e) => (e[2] === true ? e[0].replace(/^[a-z]{3}-/, '') : e[0]);
+
+/**
+ * Put PER_TIER clues in each tier by specificity. fitsOf(entry) is the number of
+ * countries a clue is true of. Tier 5 takes give-aways (fits 1), the clues first
+ * suggested for tier 5 first. Tiers 4 to 1 each take the clues whose fits are
+ * closest to the tier's target (on a log scale), preferring kinds the tier does
+ * not have yet. Clues fitting more than FIT_LIMIT[1] are never used.
+ * fixed: optional [{ tier, entry }] already placed (hand-written clues).
+ * Returns { clues, loose } where loose lists "tier:fits" for clues outside their tier's range.
+ */
+export function assignTiers(c, fitsOf, fixed = [], skip = () => false) {
+  const seen = new Set();
+  const cands = [];
+  const vague = []; // too general to use, unless a country has nothing else for tier 1
+  for (const t of [5, 4, 3, 2, 1]) {
+    for (const e of c[t]) {
+      const key = e[2] === true ? e[0] : JSON.stringify(e);
+      if (seen.has(key) || skip(e)) continue;
+      seen.add(key);
+      const fits = fitsOf(e);
+      if (fits >= 1 && fits <= FIT_LIMIT[1]) cands.push({ e, fits, pref: t });
+      else if (fits > FIT_LIMIT[1]) vague.push({ e, fits, pref: t });
+    }
+  }
+  const take = { 1: [], 2: [], 3: [], 4: [], 5: [] };
+  for (const f of fixed) take[f.tier].push({ e: f.entry, fits: fitsOf(f.entry), fixed: true });
+  const used = new Set();
+  const grab = (t, x) => {
+    take[t].push(x);
+    used.add(x);
+  };
+  for (const x of cands.filter((y) => y.fits === 1 && y.pref === 5)) if (take[5].length < PER_TIER) grab(5, x);
+  for (const x of cands.filter((y) => y.fits === 1 && !used.has(y))) if (take[5].length < PER_TIER) grab(5, x);
+  for (const t of [4, 3, 2, 1]) {
+    while (take[t].length < PER_TIER) {
+      let best = null;
+      let bestScore = Infinity;
+      for (const x of cands) {
+        if (used.has(x) || (x.fits === 1 && t < 4)) continue; // a give-away never comes early
+        const same = take[t].filter((y) => kindOf(y.e) === kindOf(x.e)).length;
+        const score = Math.abs(Math.log(x.fits / TARGET[t])) + 0.6 * same;
+        if (score < bestScore) {
+          bestScore = score;
+          best = x;
+        }
+      }
+      if (!best) break;
+      grab(t, best);
+    }
+  }
+  vague.sort((a, b) => a.fits - b.fits);
+  while (take[1].length < PER_TIER && vague.length) grab(1, vague.shift());
+  const clues = [];
+  const loose = [];
+  const range = { 1: [41, 100], 2: [13, 40], 3: [5, 12], 4: [1, 4], 5: [1, 1] };
+  for (const t of [1, 2, 3, 4, 5]) {
+    for (const x of take[t]) {
+      if (!x.fixed && x.fits > range[t][1]) loose.push(`${t}:${x.fits}`); // vaguer than its tier allows
+      const e = x.e;
+      clues.push(e[2] === true ? [t, e[0], e[1]] : [t, ...e]);
+    }
+  }
+  return { clues, loose };
 }

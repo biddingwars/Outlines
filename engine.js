@@ -1333,15 +1333,18 @@
 
   /**
    * Pick the clues for one round: one per tier, hardest first, at random from
-   * each tier's pool (rng: a seeded generator). Returns indices into item.clues.
+   * each tier's pool (rng: a seeded generator), skipping sentences in `shown`
+   * (English text) while the tier has others. Returns indices into item.clues.
    */
-  function pickClues(item, rng) {
+  function pickClues(item, rng, shown = new Set()) {
     const out = [];
     for (let tier = 1; tier <= TIERS; tier++) {
-      const pool = [];
+      const all = [];
       item.clues.forEach((c, k) => {
-        if (c.tier === tier) pool.push(k);
+        if (c.tier === tier) all.push(k);
       });
+      const fresh = all.filter((k) => !shown.has(item.clues[k].text.en));
+      const pool = fresh.length ? fresh : all;
       out.push(pool[rng.int(pool.length)]);
     }
     return out;
@@ -1613,6 +1616,10 @@
         botStyle: config.practice?.botStyle ?? null,
       },
       rules,
+      // Places from the player's recent games: dealt only once the rest of the pool is used.
+      // Oldest first; only the newest half of the pool is held back, so every game
+      // still draws from at least half of it at random.
+      recent: (Array.isArray(config.recent) ? config.recent.filter((id) => typeof id === 'string' && pool.includes(id)) : []).slice(-Math.floor(pool.length / 2)),
     };
   }
 
@@ -1624,10 +1631,20 @@
   function createGame(pack, config) {
     const cfg = normalizeConfig(pack, config);
     const rng = createRng(cfg.seed, 'setup');
-    const places = rng.fork('places').shuffle(poolFor(pack, cfg.difficulty)).slice(0, cfg.rounds);
+    // A random order of the whole pool; places from recent games go to the back, oldest first.
+    const recent = new Set(cfg.recent);
+    const order = rng.fork('places').shuffle(poolFor(pack, cfg.difficulty));
+    const places = [...order.filter((id) => !recent.has(id)), ...cfg.recent].slice(0, cfg.rounds);
     // Which five clues each round shows: one per tier, drawn from the place's pool,
-    // so the same place reads differently from game to game.
-    const clueSets = places.map((id, r) => pickClues(pack.byId.get(id), rng.fork('clues', r)));
+    // so the same place reads differently from game to game. A sentence already
+    // shown this game is not shown again while its tier has another one.
+    const shown = new Set();
+    const clueSets = places.map((id, r) => {
+      const item = pack.byId.get(id);
+      const set = pickClues(item, rng.fork('clues', r), shown);
+      for (const k of set) shown.add(item.clues[k].text.en);
+      return set;
+    });
     // Each bot gets a different hidden temperament.
     const temps = rng.fork('temperaments').shuffle(Object.keys(TEMPERAMENTS));
     const bots = {};

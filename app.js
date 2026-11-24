@@ -192,10 +192,12 @@ async function setLang(id) {
 const REC_KEY = 'record:v1';
 const blankRec = () => ({ played: 0, won: 0, lost: 0, drawn: 0, streak: 0, best: 0, pts: 0, botPts: 0, bestGame: null, byLevel: {} });
 const nn = x => (Number.isFinite(x) && x >= 0 ? Math.round(x) : 0);
-let RECS = { packs: {}, last: null, best: {} };
+let RECS = { packs: {}, last: null, best: {}, recent: {} };
 function parseRecs(raw) {
   let o = {}; try { o = JSON.parse(raw || '{}') || {}; } catch (e) {}
-  const out = { packs: {}, last: Packs.ids().includes(o.last) ? o.last : null, best: {} };
+  const out = { packs: {}, last: Packs.ids().includes(o.last) ? o.last : null, best: {}, recent: {} };
+  // The places of recent games, oldest first, so new games deal fresh ones first.
+  Packs.ids().forEach(id => { const r = (o.recent || {})[id]; if (Array.isArray(r)) out.recent[id] = r.filter(x => typeof x === 'string').slice(-200); });
   Packs.ids().forEach(id => {
     const r = (o.packs || {})[id] || {}, b = blankRec();
     ['played', 'won', 'lost', 'drawn', 'best', 'pts', 'botPts'].forEach(k => { b[k] = nn(r[k]); });
@@ -421,8 +423,10 @@ async function setup(kind, packId = SELPACK) {
     for (let k = 1; k <= bots; k++) seats.push({ kind: 'bot', name: bots === 1 ? t('bot') : `${t('bot')} ${k}` });
     LASTCFG = { packId: pack.id, kind, level: pick('level') || level, rounds: +pick('rounds'), clue: +pick('clue'), draw: +pick('draw'), players: count, bots };
     h.close(true);
-    CFG = { seed: Math.floor(Math.random() * 2 ** 32), difficulty: LASTCFG.level, rounds: LASTCFG.rounds, clueSeconds: LASTCFG.clue, drawSeconds: LASTCFG.draw, seats, practice: { faintOutline: SET.faint } };
+    CFG = { seed: Math.floor(Math.random() * 2 ** 32), difficulty: LASTCFG.level, rounds: LASTCFG.rounds, clueSeconds: LASTCFG.clue, drawSeconds: LASTCFG.draw, seats, practice: { faintOutline: SET.faint }, recent: RECS.recent[pack.id] || [] };
     G = Engine.createGame(pack, CFG);
+    RECS.recent[pack.id] = (RECS.recent[pack.id] || []).filter(id => !G.places.includes(id)).concat(G.places).slice(-200);
+    saveRec();
     G._kind = kind;
     S0 = { recorded: false };
     show();

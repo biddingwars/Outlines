@@ -48,6 +48,8 @@ export default {
     lat_below: 'Tidak ada bagiannya yang mencapai garis lintang {x}° LU.',
     lat_south: 'Seluruhnya terletak di selatan garis lintang {x}° LS.',
     neighbour: 'Salah satu negara tetangganya: {x}.',
+    neighbours2: 'Dua negara tetangganya: {x}.',
+    neighbours_only: 'Satu-satunya tetangga daratnya: {x}.',
     capital_is: 'Ibu kotanya {x}.',
   },
   frame: {
@@ -57,6 +59,9 @@ export default {
     words: 'Namanya terdiri dari {x} kata.',
     capInitial: 'Nama ibu kotanya diawali {x}.',
     capLetters: 'Nama ibu kotanya terdiri dari {x} huruf.',
+    areaRank: 'Menurut luasnya, negara ini berada di peringkat {lo}–{hi} di antara negara-negara {x} (1 = terbesar).',
+    latBandN: 'Seluruhnya terletak antara {lo}° LU dan {hi}° LU.',
+    latBandS: 'Seluruhnya terletak antara {lo}° LS dan {hi}° LS.',
     scrambled: 'Susun ulang huruf namanya: {x}',
   },
   voc: {

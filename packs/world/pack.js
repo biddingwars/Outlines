@@ -9,8 +9,9 @@ import rawSource from './source.js';
 import outlines from './outlines.js';
 import { CAPITAL_FIX, NO_CAPITAL } from './lists.js';
 import { localize, ADDED } from '../i18n/localize.js';
-import { LANGS } from '../../engine/names.js';
-import { autoItem, fillTiers, countryTier, flagEmoji, slug, currencyFact } from './auto.js';
+import { LANGS, NON_LATIN } from '../../engine/names.js';
+import { evalTest } from '../../engine/clues.js';
+import { autoItem, assignTiers, countryTier, flagEmoji, slug, currencyFact } from './auto.js';
 import fEurope from './facts-europe.js';
 import fAsia from './facts-asia.js';
 import fAfrica from './facts-africa.js';
@@ -59,17 +60,72 @@ for (const [id, s] of Object.entries(source)) {
   if (cur?.word) addWord(cur.word);
 }
 
-export const shortfalls = {};
+// Pass 1: every country's facts (the 20 classic ones keep their own on top).
+const continentWords = localize({ continent: vocab.continent }, 'vocab').continent;
+const autos = Object.fromEntries(Object.entries(source).map(([id, s]) => [id, autoItem(id, s, outlines.items[s.geo], source, lframes, vocabLangs, continentWords)]));
+const factsOf = Object.fromEntries(
+  Object.keys(source).map((id) => [id, crafted.has(id) ? { ...autos[id].facts, ...crafted.get(id).facts, ...(pools[id]?.facts ?? {}) } : autos[id].facts]),
+);
+const allFacts = Object.values(factsOf);
+// Facts every country has; others (language, coast, flag) exist for the 20 hand-written ones only.
+const KNOWN = new Set(Object.keys(allFacts[0]).filter((k) => allFacts.every((f) => f[k] !== undefined)));
+
+const tplTest = (e) => {
+  const tpl = templates[e[0]];
+  return { f: tpl.f, [tpl.op]: 'value' in tpl ? tpl.value : e[1] };
+};
+// Hand-written template clues fitting more countries than this are swapped out.
+const HAND_LIMIT = { 1: 100, 2: 45, 3: 25, 4: 10, 5: 1 };
+
+// How many of the 196 countries a candidate clue is true of.
+const nameIn = (id, l, src) => {
+  const n = src === 'cap' ? source[id].capital : source[id].names;
+  return n ? (NON_LATIN.includes(l) ? n.en : n[l]) : null;
+};
+function fitsOf(id) {
+  return (e) => {
+    if (e[2] === true) {
+      const meta = e[3];
+      if (!meta || meta.unique) return 1;
+      if (meta.count) return meta.count;
+      if (meta.pred) return allFacts.filter(meta.pred).length;
+      let most = 0; // the language in which the clue is least specific counts
+      for (const l of LANGS) {
+        const mine = meta.f(nameIn(id, l, meta.src));
+        let n = 0;
+        for (const o of Object.keys(source)) {
+          const s = nameIn(o, l, meta.src);
+          if (s && meta.f(s) === mine) n++;
+        }
+        most = Math.max(most, n);
+      }
+      return most;
+    }
+    if (typeof e[1] === 'object' && !Array.isArray(e[1])) return 1; // a hand-written sentence
+    const test = tplTest(e);
+    return allFacts.filter((f) => evalTest(test, f) === true).length;
+  };
+}
+
+/** Clues placed in a tier they are too vague for ("tier:fits"), per country; see auto.js. */
+export const loose = {};
 const items = Object.entries(source).map(([id, s]) => {
   const geo = outlines.items[s.geo];
-  const auto = autoItem(id, s, geo, source, lframes, vocabLangs);
   const own = crafted.get(id);
   const pool = pools[id];
   if (own) {
-    return { ...own, names: namesIn(id, own.names), iso2: s.iso2, flag: flagEmoji(s.iso2), facts: { ...auto.facts, ...own.facts, ...(pool?.facts ?? {}) }, clues: pool ? pool.clues : own.clues };
+    // Hand-written clues stay; a template clue far too general for its tier
+    // ("It is a republic") makes room for a sharper automatic one.
+    const fits = fitsOf(id);
+    const giveaway = (e) => e[0] <= 3 && KNOWN.has(tplTest(e.slice(1)).f) && fits(e.slice(1)) === 1; // "borders the UK" is Ireland
+    const kept = pool.clues.filter((e) => typeof e[2] === 'object' || (fits(e.slice(1)) <= HAND_LIMIT[e[0]] && !giveaway(e)));
+    const testOf = (e) => (e[2] === true || typeof e[1] === 'object' ? null : JSON.stringify(tplTest(e)));
+    const taken = new Set(kept.filter((e) => typeof e[2] !== 'object').map((e) => testOf(e.slice(1))));
+    const { clues } = assignTiers(autos[id].candidates, fits, kept.map((e) => ({ tier: e[0], entry: e.slice(1) })), (e) => taken.has(testOf(e)));
+    return { ...own, names: namesIn(id, own.names), iso2: s.iso2, flag: flagEmoji(s.iso2), facts: factsOf[id], clues };
   }
-  const { clues, short } = fillTiers(auto.candidates);
-  if (short.length) shortfalls[id] = short;
+  const { clues, loose: l } = assignTiers(autos[id].candidates, fitsOf(id));
+  if (l.length) loose[id] = l;
   const item = {
     id,
     geo: s.geo,
@@ -78,7 +134,7 @@ const items = Object.entries(source).map(([id, s]) => {
     tier: countryTier(s),
     names: s.names,
     aliases: s.alt.filter((a) => a !== s.iso2 && a.length > 1),
-    facts: auto.facts,
+    facts: autos[id].facts,
     clues,
     fact: funFacts[id],
   };

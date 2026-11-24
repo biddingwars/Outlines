@@ -220,15 +220,18 @@ export function hasCoords(item) {
 
 /**
  * Pick the clues for one round: one per tier, hardest first, at random from
- * each tier's pool (rng: a seeded generator). Returns indices into item.clues.
+ * each tier's pool (rng: a seeded generator), skipping sentences in `shown`
+ * (English text) while the tier has others. Returns indices into item.clues.
  */
-export function pickClues(item, rng) {
+export function pickClues(item, rng, shown = new Set()) {
   const out = [];
   for (let tier = 1; tier <= TIERS; tier++) {
-    const pool = [];
+    const all = [];
     item.clues.forEach((c, k) => {
-      if (c.tier === tier) pool.push(k);
+      if (c.tier === tier) all.push(k);
     });
+    const fresh = all.filter((k) => !shown.has(item.clues[k].text.en));
+    const pool = fresh.length ? fresh : all;
     out.push(pool[rng.int(pool.length)]);
   }
   return out;

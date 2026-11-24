@@ -2,6 +2,7 @@ import { test } from 'node:test';
 import { world } from './helpers.js';
 import assert from 'node:assert/strict';
 import { validatePack, preparePack, poolFor, expandPack } from '../engine/pack.js';
+import { evalTest } from '../engine/clues.js';
 import worldPack from '../packs/world/pack.js';
 import worldOutlines from '../packs/world/outlines.js';
 import usPack from '../packs/us-states/pack.js';
@@ -123,4 +124,23 @@ test('country names resolve in every language and script', () => {
     assert.equal(resolve(world.index, name), 'DEU', `${l}: ${name}`);
     assert.equal(suggest(world.index, name.slice(0, 2), l).some((s) => s.id === 'DEU'), true, `${l} autocomplete`);
   }
+});
+
+test('every clue is specific enough for its tier, and nothing gives a place away early', () => {
+  // Most countries a clue may fit (out of 196), per tier. Tier 1 may use a broad
+  // fact only when a country has nothing narrower (the United States).
+  const LIMIT = { 2: 50, 3: 40, 4: 10, 5: 1 };
+  const bad = [];
+  // Only facts known for every country can be counted (language, coast, flag and
+  // climate facts exist for the 20 hand-written countries only).
+  const known = (f) => world.items.every((o) => o.facts[f] !== undefined);
+  for (const it of world.items) {
+    for (const c of it.clues) {
+      if (!known(c.test.f)) continue;
+      const fits = world.items.filter((o) => evalTest(c.test, o.facts) === true).length;
+      if (LIMIT[c.tier] && fits > LIMIT[c.tier]) bad.push(`${it.id} tier ${c.tier}: ${fits} – ${c.text.en}`);
+      if (c.tier <= 3 && fits === 1 && c.test.f !== 'tags') bad.push(`${it.id} tier ${c.tier} gives it away: ${c.text.en}`);
+    }
+  }
+  assert.deepEqual(bad, []);
 });

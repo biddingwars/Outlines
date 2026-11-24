@@ -49,6 +49,8 @@ export default {
     lat_below: '它没有任何部分到达北纬 {x}°。',
     lat_south: '它完全位于南纬 {x}° 以南。',
     neighbour: '它的邻国之一：{x}。',
+    neighbours2: '它的两个邻国：{x}。',
+    neighbours_only: '它仅有的陆上邻国：{x}。',
     capital_is: '它的首都是{x}。',
   },
   frame: {
@@ -58,6 +60,9 @@ export default {
     words: '它的英文名由 {x} 个单词组成。',
     capInitial: '它首都的英文名以 {x} 开头。',
     capLetters: '它首都的英文名有 {x} 个字母。',
+    areaRank: '按面积，它在{x}各国中排第 {lo}–{hi} 位（第 1 位最大）。',
+    latBandN: '它完全位于北纬 {lo}° 到 {hi}° 之间。',
+    latBandS: '它完全位于南纬 {lo}° 到 {hi}° 之间。',
     scrambled: '把这些字母重新排列成它的英文名：{x}',
   },
   voc: {

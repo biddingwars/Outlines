@@ -49,6 +49,8 @@ export default {
     lat_below: '어느 곳도 북위 {x}도에 이르지 않습니다.',
     lat_south: '국토 전체가 남위 {x}도보다 남쪽에 있습니다.',
     neighbour: '이웃 나라 중 하나: {x}.',
+    neighbours2: '이웃 나라 중 두 곳: {x}.',
+    neighbours_only: '육지로 맞닿은 이웃 나라는 이것뿐입니다: {x}.',
     capital_is: '수도는 {x}입니다.',
   },
   frame: {
@@ -58,6 +60,9 @@ export default {
     words: '영어 이름은 {x}개 단어로 되어 있습니다.',
     capInitial: '수도의 영어 이름이 {x}로 시작합니다.',
     capLetters: '수도의 영어 이름은 {x}글자입니다.',
+    areaRank: '면적으로 {x} 나라 중 {lo}~{hi}위입니다(1위가 가장 큼).',
+    latBandN: '국토 전체가 북위 {lo}도와 {hi}도 사이에 있습니다.',
+    latBandS: '국토 전체가 남위 {lo}도와 {hi}도 사이에 있습니다.',
     scrambled: '글자를 바로 놓아 영어 이름을 만들어 보세요: {x}',
   },
   voc: {
