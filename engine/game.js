@@ -328,7 +328,7 @@ export function activeTurn(state) {
 function advanceClue(state, turn) {
   if (turn.clue < CLUES_PER_ITEM - 1) turn.clue++;
   else {
-    turn.base = 0;
+    turn.base = basePointsFor(null, turn.guesses.length, state.config.rules); // missed: the drawing still earns 1 × accuracy
     state.phase = 'draw';
   }
 }

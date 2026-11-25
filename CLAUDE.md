@@ -4,7 +4,7 @@ The game is called **Outlines**; "Project X" is the repository and code name
 (the `project-x-vN` cache key stays).
 
 Work out a mystery place from clues, then draw its outline from memory.
-Guessing early earns base points (5 down to 1); drawing accurately multiplies them: the multiplier is the accuracy (70% = 70x, perfect = 100x).
+Guessing early earns base points (6 on clue 1 down to 2 on clue 5, and 1 if the place is missed); drawing accurately multiplies them: the multiplier is the accuracy (70% = 70x, perfect = 100x).
 
 **Project X runs on the Bidding Wars shell.** The menu, sheets, settings, record,
 privacy, setup, sealed-bar results, 3D globe, sounds (`sound.js`), motion (`fx.js`),

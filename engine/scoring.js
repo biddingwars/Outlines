@@ -9,7 +9,9 @@ export const DEFAULT_CURVE = Object.freeze({ linear: true, max: 100 });
 
 export const DEFAULT_RULES = Object.freeze({
   /** Base points by the clue the place was guessed on (index 0 = clue 1). */
-  basePoints: Object.freeze([5, 4, 3, 2, 1]),
+  basePoints: Object.freeze([6, 5, 4, 3, 2]),
+  /** Base points when the place was not named at all: the drawing still counts, 1 × accuracy. */
+  missedBase: 1,
   /** Points taken off the base for each wrong guess (the base never drops below 1 once solved). */
   wrongGuessPenalty: 1,
   curve: DEFAULT_CURVE,
@@ -64,7 +66,7 @@ export function validateCurve(curve) {
  * @param {number} wrong          wrong guesses made before solving
  */
 export function basePointsFor(solvedAt, wrong, rules = DEFAULT_RULES) {
-  if (solvedAt === null || solvedAt === undefined) return 0;
+  if (solvedAt === null || solvedAt === undefined) return rules.missedBase ?? 0;
   const base = rules.basePoints[solvedAt] ?? 0;
   if (!base) return 0;
   return Math.max(1, base - wrong * rules.wrongGuessPenalty);
