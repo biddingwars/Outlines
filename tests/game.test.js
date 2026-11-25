@@ -274,3 +274,16 @@ test('a round shows at most one clue of each kind when the pool allows', async (
   // Bangladesh once showed three latitude clues in one round (beta log 2)
   assert.ok(repeats / rounds < 0.15, `repeats in ${repeats}/${rounds} rounds`);
 });
+
+test('places are spread across continents in proportion, never two from one in a row', async () => {
+  const { placeGroup } = await import('../engine/game.js');
+  for (const seed of [1, 2, 3, 4, 5]) {
+    const s = createGame(world, { seed, rounds: 30, difficulty: 'master', seats: [{ kind: 'human', name: 'H' }, { kind: 'bot' }] });
+    const g = s.places.map((id) => placeGroup(world.byId.get(id)));
+    assert.equal(new Set(s.places).size, 30);
+    assert.equal(g.filter((x, i) => i && x === g[i - 1]).length, 0, `seed ${seed}: same continent twice in a row`);
+    // Europe has 45 of 196 countries: about 7 of 30, never 9 or more (beta tester, November 2026)
+    const europe = g.filter((x) => x === 'europe').length;
+    assert.ok(europe >= 5 && europe <= 8, `seed ${seed}: ${europe} European countries`);
+  }
+});

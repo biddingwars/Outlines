@@ -569,7 +569,9 @@ function globe3d(host, owned, pack){
     camera.position.set(dist*Math.cos(a)*Math.sin(b), dist*Math.sin(a), dist*Math.cos(a)*Math.cos(b));
     camera.lookAt(0,0,0);
 
-    labels.forEach(L=>{
+    const placed=[];   // labels drawn so far this frame, front-most first: an overlapping one is hidden
+    labels.map(L=>{ tmp.copy(L.v); L.facing=tmp.normalize().dot(camera.position.clone().normalize()); return L; })
+      .sort((a,b)=>b.facing-a.facing).forEach(L=>{
       tmp.copy(L.v);
       const facing = tmp.clone().normalize().dot(camera.position.clone().normalize());
       tmp.project(camera);
@@ -579,7 +581,12 @@ function globe3d(host, owned, pack){
       if(!L.w) L.w=L.d.offsetWidth;
       const half=(L.w||0)/2+6;
       L.d.style.left=Math.max(half, Math.min(vw-half, x))+'px'; L.d.style.top=Math.max(12, Math.min(vh-12, y))+'px';
-      L.d.style.opacity = facing>0.35 ? Math.min(1,(facing-0.35)/0.25) : 0;
+      let op = facing>0.35 ? Math.min(1,(facing-0.35)/0.25) : 0;
+      if(op>0 && L.w){
+        const lx=parseFloat(L.d.style.left), ly=parseFloat(L.d.style.top), hw=L.w/2+3, hh=11;
+        if(placed.some(q=>Math.abs(q.x-lx)<q.hw+hw && Math.abs(q.y-ly)<hh*2)) op=0; else placed.push({x:lx,y:ly,hw});
+      }
+      L.d.style.opacity = op;
     });
 
     renderer.render(scene,camera);
