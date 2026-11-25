@@ -32,3 +32,5 @@ node tools/build-outlines.mjs --world <countries-50m.json> --us <states-10m.json
 - Country outlines: Natural Earth 1:50m (public domain), via world-atlas.
 - US state outlines: US Census Bureau Cartographic Boundary Files (public domain), via us-atlas.
 - Facts: CIA World Factbook and official sources (listed per pack in `sources`).
+
+Play it at https://biddingwars.github.io/Outlines/ (GitHub Pages, deployed from `main`).
