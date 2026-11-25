@@ -337,7 +337,9 @@ async function logError(msg, stack, where) {
     await Store.set(Engine.LOG_KEY, Engine.addErrorToLog(await Store.get(Engine.LOG_KEY), { msg, stack, where, t: logNow(), app: CONFIG.version, screen }));
   } catch (e) {}
 }
-window.addEventListener('error', e => logError(String(e.message || e.error || 'error'), e.error && e.error.stack, (e.filename || '').split('/').pop() + ':' + (e.lineno || 0)));
+// "Script error." with no file, line or stack is what browsers report for a script from another
+// origin (an extension, the system): Outlines loads none, and the message tells nothing.
+window.addEventListener('error', e => (e.message === 'Script error.' && !e.filename && !e.error) || logError(String(e.message || e.error || 'error'), e.error && e.error.stack, (e.filename || '').split('/').pop() + ':' + (e.lineno || 0)));
 window.addEventListener('unhandledrejection', e => logError(String((e.reason && e.reason.message) || e.reason || 'rejection'), e.reason && e.reason.stack, 'promise'));
 
 /* the exported log: plain text to copy or share (selectable on iOS where the clipboard API may be refused) */
