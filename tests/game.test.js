@@ -272,7 +272,8 @@ test('a round shows at most one clue of each kind when the pool allows', async (
     }
   }
   // Bangladesh once showed three latitude clues in one round (beta log 2)
-  assert.ok(repeats / rounds < 0.15, `repeats in ${repeats}/${rounds} rounds`);
+  // the five clues are picked together, so no round repeats a kind (beta log 3: Andorra, Georgia)
+  assert.equal(repeats, 0, `repeats in ${repeats}/${rounds} rounds`);
 });
 
 test('places are spread across continents in proportion, never two from one in a row', async () => {
@@ -286,4 +287,22 @@ test('places are spread across continents in proportion, never two from one in a
     const europe = g.filter((x) => x === 'europe').length;
     assert.ok(europe >= 5 && europe <= 8, `seed ${seed}: ${europe} European countries`);
   }
+});
+
+test('bots never hand in a drawing worse than a circle more than very rarely', () => {
+  let n = 0;
+  let zero = 0;
+  for (let seed = 1; seed <= 60; seed++) {
+    let s = createGame(world, { seed, rounds: 5, difficulty: 'master', seats: [{ kind: 'human', name: 'H' }, { kind: 'bot' }, { kind: 'bot' }, { kind: 'bot' }] });
+    while (s.phase !== 'gameOver') {
+      const type = s.phase === 'handoff' ? 'ready' : s.phase === 'clue' ? 'clueTimeout' : s.phase === 'draw' ? 'submitDrawing' : 'continue';
+      s = step(world, s, type === 'submitDrawing' ? { type, strokes: [] } : { type });
+    }
+    for (const round of s.turns) for (const t of round) if (s.config.seats[t.seat].kind === 'bot') {
+      n++;
+      if (t.accuracy < 0.05) zero++;
+    }
+  }
+  // beta log 3: a bot's Namibia scored 0 % and looked like a bug
+  assert.ok(zero / n < 0.01, `${zero}/${n} bot drawings near 0 %`);
 });

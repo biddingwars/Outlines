@@ -260,9 +260,17 @@ function botTurn(pack, state, seat, sums) {
   }
   turn.clue = turn.solvedAt ?? CLUES_PER_ITEM - 1;
   turn.base = basePointsFor(turn.solvedAt, wrong.length, cfg.rules);
-  const skill = rollSkill(rng.fork('skill'));
-  const strokes = sketch(pack.byId.get(answer).outline, skill, rng.fork('sketch'), BOT_CANVAS);
-  Object.assign(turn, judgeTurn(pack, answer, strokes, turn.base, cfg.rules));
+  let skill = rollSkill(rng.fork('skill'));
+  const sk = rng.fork('sketch');
+  let judged = judgeTurn(pack, answer, sketch(pack.byId.get(answer).outline, skill, sk, BOT_CANVAS), turn.base, cfg.rules);
+  // A drawing worse than a plain circle scores about 0 % and looked like a bug in the results
+  // (beta log 3: a bot's Namibia at 0 %). Like a person rubbing it out, the bot redraws it once,
+  // with a steadier hand. About 2 % of bot drawings.
+  if (judged.accuracy < 0.1) {
+    skill = Math.max(0.02, skill * 0.6);
+    judged = judgeTurn(pack, answer, sketch(pack.byId.get(answer).outline, skill, sk, BOT_CANVAS), turn.base, cfg.rules);
+  }
+  Object.assign(turn, judged);
   const talk = rng.fork('talk');
   const kind = turn.solvedAt === null ? 'miss' : turn.solvedAt <= 1 ? 'early' : 'late';
   turn.bot = {

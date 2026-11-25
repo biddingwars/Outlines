@@ -1399,28 +1399,40 @@
   }
 
   function pickClues(item, rng, shown = new Set()) {
-    const out = [];
-    const used = new Set();
+    // The five clues are chosen together, not tier by tier: a round prefers sentences not seen
+    // yet this game, then as many different kinds of fact as possible. Picking tier by tier could
+    // use up the only other kind early (Andorra: a size rank at tier 2, a neighbour at tier 3,
+    // and tier 4 holds only size ranks and neighbours). At most 4^5 = 1024 combinations.
+    const byTier = [];
     for (let tier = 1; tier <= TIERS; tier++) {
-      const all = [];
+      const ks = [];
       item.clues.forEach((c, k) => {
-        if (c.tier === tier) all.push(k);
+        if (c.tier === tier) ks.push(k);
       });
-      const fresh = (k) => !shown.has(item.clues[k].text.en);
-      const newFam = (k) => !used.has(clueFamily(item.clues[k]));
-      // Never a sentence already seen this game if avoidable; then a new kind of fact.
-      const tries = [
-        all.filter((k) => fresh(k) && newFam(k)),
-        all.filter(fresh),
-        all.filter(newFam),
-        all,
-      ];
-      const pool = tries.find((x) => x.length);
-      const k = pool[rng.int(pool.length)];
-      out.push(k);
-      used.add(clueFamily(item.clues[k]));
+      byTier.push(ks);
     }
-    return out;
+    const fam = item.clues.map((c) => clueFamily(c));
+    const fresh = item.clues.map((c) => !shown.has(c.text.en));
+    let best = -1;
+    let picks = [];
+    const cur = [];
+    const walk = (t) => {
+      if (t === byTier.length) {
+        const score = cur.filter((k) => fresh[k]).length * 10 + new Set(cur.map((k) => fam[k])).size;
+        if (score > best) {
+          best = score;
+          picks = [cur.slice()];
+        } else if (score === best) picks.push(cur.slice());
+        return;
+      }
+      for (const k of byTier[t]) {
+        cur.push(k);
+        walk(t + 1);
+        cur.pop();
+      }
+    };
+    walk(0);
+    return picks[rng.int(picks.length)];
   }
 
 
@@ -1880,9 +1892,17 @@
     }
     turn.clue = turn.solvedAt ?? CLUES_PER_ITEM - 1;
     turn.base = basePointsFor(turn.solvedAt, wrong.length, cfg.rules);
-    const skill = rollSkill(rng.fork('skill'));
-    const strokes = sketch(pack.byId.get(answer).outline, skill, rng.fork('sketch'), BOT_CANVAS);
-    Object.assign(turn, judgeTurn(pack, answer, strokes, turn.base, cfg.rules));
+    let skill = rollSkill(rng.fork('skill'));
+    const sk = rng.fork('sketch');
+    let judged = judgeTurn(pack, answer, sketch(pack.byId.get(answer).outline, skill, sk, BOT_CANVAS), turn.base, cfg.rules);
+    // A drawing worse than a plain circle scores about 0 % and looked like a bug in the results
+    // (beta log 3: a bot's Namibia at 0 %). Like a person rubbing it out, the bot redraws it once,
+    // with a steadier hand. About 2 % of bot drawings.
+    if (judged.accuracy < 0.1) {
+      skill = Math.max(0.02, skill * 0.6);
+      judged = judgeTurn(pack, answer, sketch(pack.byId.get(answer).outline, skill, sk, BOT_CANVAS), turn.base, cfg.rules);
+    }
+    Object.assign(turn, judged);
     const talk = rng.fork('talk');
     const kind = turn.solvedAt === null ? 'miss' : turn.solvedAt <= 1 ? 'early' : 'late';
     turn.bot = {
