@@ -690,3 +690,19 @@ html[data-motion=reduce] .rays,html[data-motion=reduce] .confetti{display:none}
   .res2:has(#extra[hidden]){grid-template-columns:minmax(0,520px);justify-content:center}
   .res2:has(#extra[hidden]) .r-r{display:none}
 }
+
+/* results with many rounds (30 rounds × 4 players = 120 score chips): on wide screens each
+   column scrolls inside the page instead of spilling over the top, under the Menu button */
+@media (min-width:760px) and (min-height:520px){
+  .res2{grid-template-rows:minmax(0,1fr)}
+  .r-l,.r-r{max-height:100%;overflow-y:auto;overscroll-behavior:contain;scrollbar-width:none;padding-bottom:6px}
+  .r-l::-webkit-scrollbar,.r-r::-webkit-scrollbar{display:none}
+  .r-l>#acts{position:sticky;bottom:0;z-index:2}
+}
+/* more than 10 rounds: smaller chips, four to a row (three on a phone) */
+.lb.many .fl{gap:4px}
+.lb.many .f1{flex:0 1 calc(25% - 3px);min-width:0;font-size:11px;padding:2px 5px 2px 2px;gap:3px;border-radius:12px}
+.lb.many .f1 em{width:17px;height:17px;font-size:11px}
+.lb.many .f1 span:not(.sr){overflow:hidden;text-overflow:ellipsis}
+@media (max-width:420px){ .lb.many .f1{flex-basis:calc(33.3% - 3px)} }
+.lb.many .redact:not(.open){width:24px}

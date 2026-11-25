@@ -847,7 +847,7 @@ function finish() {
     <div class="res2">
       <div class="r-l">
         <div class="glass win" id="verdict"><div class="crown" aria-hidden="true">🔒</div><h2>${esc(t('sealed'))}</h2><p>${esc(t('revealShort'))}</p></div>
-        <div class="glass lb" id="lb">${order.map(r => `
+        <div class="glass lb${G.config.rounds > 10 ? ' many' : ''}" id="lb">${order.map(r => `
           <div class="lbr"><div class="o s${seatOf(r.seat)}" aria-hidden="true">${esc(ini(r.name))}</div><div class="n">${esc(r.name)}</div><div class="p">${red(fmtN(r.total), t('points') + ' · ' + r.name)}</div></div>
           <div class="fl">${r.rounds.map(x => { const it = itemOf(x.itemId); return `<span class="f1"><em aria-hidden="true">${icon(it)}</em><span class="sr">${esc(cname(it))}</span><span>${Math.round(x.accuracy * 100)}%</span><s>${red(fmtN(x.score), cname(it))}</s></span>`; }).join('')}</div>`).join('')}
         </div>
@@ -857,11 +857,11 @@ function finish() {
     </div>`, 'results');
   on('nb', () => { Snd.ui(); home(); });
   const bars = $$('.redact', sec);
-  let opened = 0, revealed = false;
+  let opened = 0, revealed = false, lastTick = 0;
   const lift = b => {
     if (b.classList.contains('open')) return;
     b.classList.add('open'); b.textContent = b.dataset.v; b.removeAttribute('aria-label'); b.tabIndex = -1;
-    Snd.ui(); Haptics.light();
+    const now = performance.now(); if (now - lastTick > 60) { lastTick = now; Snd.ui(); Haptics.light(); }   // a fast lift-all ticks, it does not buzz
     if (!FX.reduced) b.animate([{ transform: 'scale(.85)', opacity: .3 }, { transform: 'scale(1.08)', opacity: 1, offset: .6 }, { transform: 'scale(1)', opacity: 1 }], { duration: 300, easing: 'ease-out' });
     opened++;
     if (opened === bars.length && !revealed) { revealed = true; setTimeout(() => reveal(sec, res, REC), 420); }
@@ -869,7 +869,7 @@ function finish() {
   bars.forEach(b => b.onclick = () => lift(b));
   const tokW = navTok;
   setTimeout(() => (window.requestIdleCallback || (f => f()))(() => { if (tokW === navTok) buildWorld(sec, res); }, { timeout: 400 }), 450);
-  on('rev', () => { let d = 0; bars.forEach(b => { if (!b.classList.contains('open')) setTimeout(() => lift(b), d += 70); }); $('#rev').disabled = true; });
+  on('rev', () => { const shut = bars.filter(b => !b.classList.contains('open')), step = Math.min(70, 1500 / Math.max(1, shut.length)); let d = 0; shut.forEach(b => setTimeout(() => lift(b), d += step)); $('#rev').disabled = true; });   // 120 bars (30 rounds, 4 players) in 1.5 s, not 8
 }
 
 /* The world card: every place played, lit by how well the first human drew it.

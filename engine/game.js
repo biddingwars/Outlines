@@ -83,13 +83,61 @@ export function isPractice(cfg) {
   return !!(cfg.practice.faintOutline || cfg.practice.botStyle);
 }
 
+/** The group a place belongs to for dealing: its continent (countries) or region (US states). */
+export function placeGroup(item) {
+  return item?.facts?.continent ?? item?.facts?.region ?? '';
+}
+
+/**
+ * Deal places so every continent (or US region) shows up in proportion to its share of the
+ * pool, and two places from the same group never follow each other while another group
+ * has places left. A beta tester saw 9 European countries in a 30-round game.
+ * Each group keeps its own (already shuffled) order; ties are broken at random.
+ */
+export function spread(pack, ids, rng) {
+  if (ids.length < 3) return ids.slice();
+  const groups = new Map();
+  for (const id of ids) {
+    const g = placeGroup(pack.byId.get(id));
+    if (!groups.has(g)) groups.set(g, []);
+    groups.get(g).push(id);
+  }
+  if (groups.size < 2) return ids.slice();
+  const share = new Map([...groups].map(([g, list]) => [g, list.length / ids.length]));
+  const taken = new Map([...groups.keys()].map((g) => [g, 0]));
+  const out = [];
+  let prev = null;
+  while (out.length < ids.length) {
+    const open = [...groups.keys()].filter((g) => taken.get(g) < groups.get(g).length);
+    const choices = open.length > 1 ? open.filter((g) => g !== prev) : open;
+    // the group furthest behind its fair share so far
+    const owed = (g) => share.get(g) * (out.length + 1) - taken.get(g);
+    let best = -Infinity;
+    let pick = [];
+    for (const g of choices) {
+      const o = owed(g);
+      if (o > best + 1e-9) {
+        best = o;
+        pick = [g];
+      } else if (Math.abs(o - best) <= 1e-9) pick.push(g);
+    }
+    const g = pick[rng.int(pick.length)];
+    out.push(groups.get(g)[taken.get(g)]);
+    taken.set(g, taken.get(g) + 1);
+    prev = g;
+  }
+  return out;
+}
+
 export function createGame(pack, config) {
   const cfg = normalizeConfig(pack, config);
   const rng = createRng(cfg.seed, 'setup');
   // A random order of the whole pool; places from recent games go to the back, oldest first.
   const recent = new Set(cfg.recent);
   const order = rng.fork('places').shuffle(poolFor(pack, cfg.difficulty));
-  const places = [...order.filter((id) => !recent.has(id)), ...cfg.recent].slice(0, cfg.rounds);
+  const fresh = order.filter((id) => !recent.has(id));
+  const spreadRng = rng.fork('spread');
+  const places = [...spread(pack, fresh, spreadRng), ...spread(pack, cfg.recent.filter((id) => !fresh.includes(id)), spreadRng)].slice(0, cfg.rounds);
   // Which five clues each round shows: one per tier, drawn from the place's pool,
   // so the same place reads differently from game to game. A sentence already
   // shown this game is not shown again while its tier has another one.
