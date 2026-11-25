@@ -21,6 +21,9 @@ export const TEMPERAMENTS = Object.freeze({
   aggressive: Object.freeze({ threshold: 0.28 }),
 });
 
+/** How much more readily a bot thinks of a place, by its tier (1 = famous … 4 = obscure). */
+export const FAME = Object.freeze({ 1: 4, 2: 2, 3: 1, 4: 0.6 });
+
 /** Chance the bot understands clue k (before its per-game knowledge factor). */
 export const CLUE_RECALL = Object.freeze([0.45, 0.6, 0.75, 0.9, 1.0]);
 
@@ -87,7 +90,8 @@ export function decide(view, mind) {
   let total = 0;
   let top = null;
   for (const c of cands) {
-    const w = Math.exp(0.35 * createRng(mind.seed, 'hunch', c.id).normal());
+    // a person thinks of well-known places first: tier 1 (famous) … 4 (obscure)
+    const w = (FAME[c.tier] ?? 1) * Math.exp(0.35 * createRng(mind.seed, 'hunch', c.id).normal());
     total += w;
     if (!top || w > top.w || (w === top.w && c.id < top.id)) top = { id: c.id, w };
   }

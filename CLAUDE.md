@@ -4,7 +4,7 @@ The game is called **Outlines**; "Project X" is the repository and code name
 (the `project-x-vN` cache key stays).
 
 Work out a mystery place from clues, then draw its outline from memory.
-Guessing early earns base points (5 down to 1); drawing accurately multiplies them: the multiplier is the accuracy (70% = 70x, perfect = 100x).
+Guessing early earns base points (6 on clue 1 down to 2 on clue 5, and 1 if the place is missed); drawing accurately multiplies them: the multiplier is the accuracy (70% = 70x, perfect = 100x).
 
 **Project X runs on the Bidding Wars shell.** The menu, sheets, settings, record,
 privacy, setup, sealed-bar results, 3D globe, sounds (`sound.js`), motion (`fx.js`),
@@ -26,7 +26,7 @@ outlines), `tools/`, `tests/`, `docs/`. The game never references them.
 - `npm run build` does both; `tests/shell.test.js` fails if either is stale.
 
 ## `sw.js` — bump `CACHE` on every deploy that touches a cached file
-`const CACHE = 'project-x-v16'` and `CONFIG.version` in `platform.js` must move
+`const CACHE = 'project-x-v17'` and `CONFIG.version` in `platform.js` must move
 together (the test checks). Without the bump, installed apps never see the change.
 
 ## Clues
@@ -46,6 +46,9 @@ and the scrambled name fall back to a tag (they name the place). Name clues are 
 when they say the same in all thirteen languages, and one that singles a place out in any
 language comes at tier 4 at the earliest. The bot rules out a place unless its facts show
 a clue to be true (facts only the 20 hand-written countries have cannot keep others in).
+Like a person, a bot thinks about every place in the pack (not just the difficulty's pool) and
+does not cross off places already played; its hunches lean toward well-known places (`FAME`
+by tier in `engine/bot.js`).
 Within one game no clue sentence is shown twice while its tier has another one, and places
 from the player's recent games (kept in `record:v1`) are dealt last; every game still draws
 from at least half of the pool at random.

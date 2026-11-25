@@ -43,7 +43,7 @@ test('a solo game from start to finish', () => {
     assert.equal(s.phase, 'reveal');
     const t = s.turns[r][0];
     assert.equal(t.solvedAt, r % 5);
-    assert.equal(t.base, 5 - (r % 5));
+    assert.equal(t.base, 6 - (r % 5));
     assert.ok(t.accuracy > 0.85);
     assert.ok(t.multiplier >= 85);
     assert.equal(t.score, Math.round(t.base * t.multiplier));
@@ -69,17 +69,17 @@ test('a wrong guess reveals the next clue and costs a point', () => {
   assert.equal(revealedClues(world, s).length, 2);
   s = step(world, s, { type: 'guess', id: answer });
   assert.equal(s.phase, 'draw');
-  assert.equal(activeTurn(s).base, 3); // clue 2 = 4 points, minus 1 for the wrong guess
+  assert.equal(activeTurn(s).base, 4); // clue 2 = 5 points, minus 1 for the wrong guess
 });
 
-test('missing all five clues scores zero but still draws', () => {
+test('missing all five clues still earns 1 point times the drawing', () => {
   let s = createGame(world, solo());
   for (let k = 0; k < 5; k++) s = step(world, s, { type: 'clueTimeout' });
   assert.equal(s.phase, 'draw');
   s = step(world, s, { type: 'submitDrawing', strokes: perfect(world, s) });
   const t = s.turns[0][0];
-  assert.equal(t.base, 0);
-  assert.equal(t.score, 0);
+  assert.equal(t.base, 1);
+  assert.equal(t.score, t.multiplier); // 1 × the drawing
   assert.ok(t.accuracy > 0.85);
 });
 

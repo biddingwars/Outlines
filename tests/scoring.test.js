@@ -33,11 +33,13 @@ test('accuracy comes from the outline gap, the same scale for every place', () =
 });
 
 test('base points by clue, minus wrong guesses, floor 1 when solved', () => {
-  assert.deepEqual([0, 1, 2, 3, 4].map((k) => basePointsFor(k, 0)), [5, 4, 3, 2, 1]);
-  assert.equal(basePointsFor(null, 0), 0);
-  assert.equal(basePointsFor(1, 1), 3);
+  // 6 down to 1: clue 1 is worth 6, clue 5 is worth 2, and a missed place still 1 (× the drawing)
+  assert.deepEqual([0, 1, 2, 3, 4].map((k) => basePointsFor(k, 0)), [6, 5, 4, 3, 2]);
+  assert.equal(basePointsFor(null, 0), 1);
+  assert.equal(basePointsFor(null, 3), 1);
+  assert.equal(basePointsFor(1, 1), 4);
   assert.equal(basePointsFor(4, 4), 1);
-  assert.equal(basePointsFor(1, 1, { ...DEFAULT_RULES, wrongGuessPenalty: 0 }), 4);
+  assert.equal(basePointsFor(1, 1, { ...DEFAULT_RULES, wrongGuessPenalty: 0 }), 5);
 });
 
 test('round score range is 0 or 1..500', () => {

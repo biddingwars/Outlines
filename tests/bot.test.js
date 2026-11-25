@@ -130,3 +130,14 @@ test('one-liners name the place in the player’s language', () => {
     for (const lang of ['en', 'de', 'it', 'es', 'fr']) assert.ok(line(world, kind, { itemId: 'ESP', lang, rng: createRng(2) }).length > 3);
   }
 });
+
+test('bots think about every place, not just the difficulty pool, and do not cross off places played', async () => {
+  const { world } = await import('./helpers.js');
+  const { createGame, botView } = await import('../engine/game.js');
+  const s = createGame(world, { seed: 7, rounds: 30, difficulty: 'beginner', seats: [{ kind: 'human', name: 'H' }, { kind: 'bot' }] });
+  // beta log 4: on Beginner (32 places) the bots knew the 32 and crossed off the ones played
+  const late = { ...s, round: 29 };
+  const v = botView(world, late, 0, []);
+  assert.equal(v.candidates.length, world.items.length);
+  assert.ok(v.candidates.some((c) => c.id === late.places[0]));
+});

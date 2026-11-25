@@ -214,18 +214,21 @@ function beginRound(pack, state) {
   return state;
 }
 
-/** The view a bot is given: revealed clue tests, its wrong guesses, all candidates. No answer. */
+/**
+ * The view a bot is given: revealed clue tests, its wrong guesses, all candidates. No answer.
+ * Like a person, a bot thinks about every place in the pack, not just the difficulty's pool,
+ * and does not cross off the places already played (beta log 4: on Beginner, 30 rounds out of
+ * a pool of 32 left the bots a handful of countries, and they named most on the first clue).
+ * Its hunches lean toward well-known places instead (`tier`, see decide()).
+ */
 export function botView(pack, state, clueIndex, wrong) {
   const item = pack.byId.get(state.places[state.round]);
-  const played = new Set(state.places.slice(0, state.round));
   return {
     clueIndex,
     lastClue: clueIndex === CLUES_PER_ITEM - 1,
     tests: state.clueSets[state.round].slice(0, clueIndex + 1).map((k) => item.clues[k].test),
     wrong: wrong.slice(),
-    candidates: poolFor(pack, state.config.difficulty)
-      .filter((id) => !played.has(id))
-      .map((id) => ({ id, facts: pack.byId.get(id).facts })),
+    candidates: pack.items.map((it) => ({ id: it.id, facts: it.facts, tier: it.tier })),
   };
 }
 
@@ -325,7 +328,7 @@ export function activeTurn(state) {
 function advanceClue(state, turn) {
   if (turn.clue < CLUES_PER_ITEM - 1) turn.clue++;
   else {
-    turn.base = 0;
+    turn.base = basePointsFor(null, turn.guesses.length, state.config.rules); // missed: the drawing still earns 1 × accuracy
     state.phase = 'draw';
   }
 }

@@ -1,7 +1,7 @@
 # Outlines (Project X): architecture and engine API
 
 Project X: work out a mystery place from clues, then draw its outline from memory.
-Guessing early earns base points (5 down to 1) and drawing accurately multiplies them (1x to 1,000x).
+Guessing early earns base points (6 on clue 1 down to 2 on clue 5, and 1 if the place is missed) and drawing accurately multiplies them (1x to 100x: the multiplier is the accuracy).
 
 This document covers the file layout, the engine API and the rule decisions made so far.
 The engine and its tests are built. Screen code has not been started.
