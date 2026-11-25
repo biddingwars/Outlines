@@ -1459,6 +1459,9 @@
     aggressive: Object.freeze({ threshold: 0.28 }),
   });
 
+  /** How much more readily a bot thinks of a place, by its tier (1 = famous … 4 = obscure). */
+  const FAME = Object.freeze({ 1: 4, 2: 2, 3: 1, 4: 0.6 });
+
   /** Chance the bot understands clue k (before its per-game knowledge factor). */
   const CLUE_RECALL = Object.freeze([0.45, 0.6, 0.75, 0.9, 1.0]);
 
@@ -1525,7 +1528,8 @@
     let total = 0;
     let top = null;
     for (const c of cands) {
-      const w = Math.exp(0.35 * createRng(mind.seed, 'hunch', c.id).normal());
+      // a person thinks of well-known places first: tier 1 (famous) … 4 (obscure)
+      const w = (FAME[c.tier] ?? 1) * Math.exp(0.35 * createRng(mind.seed, 'hunch', c.id).normal());
       total += w;
       if (!top || w > top.w || (w === top.w && c.id < top.id)) top = { id: c.id, w };
     }
@@ -1846,18 +1850,21 @@
     return state;
   }
 
-  /** The view a bot is given: revealed clue tests, its wrong guesses, all candidates. No answer. */
+  /**
+   * The view a bot is given: revealed clue tests, its wrong guesses, all candidates. No answer.
+   * Like a person, a bot thinks about every place in the pack, not just the difficulty's pool,
+   * and does not cross off the places already played (beta log 4: on Beginner, 30 rounds out of
+   * a pool of 32 left the bots a handful of countries, and they named most on the first clue).
+   * Its hunches lean toward well-known places instead (`tier`, see decide()).
+   */
   function botView(pack, state, clueIndex, wrong) {
     const item = pack.byId.get(state.places[state.round]);
-    const played = new Set(state.places.slice(0, state.round));
     return {
       clueIndex,
       lastClue: clueIndex === CLUES_PER_ITEM - 1,
       tests: state.clueSets[state.round].slice(0, clueIndex + 1).map((k) => item.clues[k].test),
       wrong: wrong.slice(),
-      candidates: poolFor(pack, state.config.difficulty)
-        .filter((id) => !played.has(id))
-        .map((id) => ({ id, facts: pack.byId.get(id).facts })),
+      candidates: pack.items.map((it) => ({ id: it.id, facts: it.facts, tier: it.tier })),
     };
   }
 
@@ -2306,5 +2313,5 @@
   }
 
 
-  return { hashString, deriveSeed, toSeed, createRng, isFinitePoint, signedArea, area, centroid, bbox, dist, perimeter, maxRadius, simplify, simplifyRing, resample, projectLAEA, rasterize, rasterizeUnion, countOn, moments, overlap, DEFAULT_CURVE, DEFAULT_RULES, ZERO_GAP, accuracyFromGap, stampValue, multiplierFor, validateCurve, basePointsFor, roundScore, JUDGE_DEFAULTS, unflatten, cleanStrokes, prepareTarget, outlineGap, blobBaseline, judge, outlineToCanvas, drawingAspect, outlineToBox, LANGS, NON_LATIN, fold, buildIndex, resolve, suggest, OPS, opOf, evalTest, filterByTests, CLUES_PER_ITEM, TIERS, expandPack, validatePack, preparePack, poolFor, hasCoords, clueFamily, pickClues, TEMPERAMENTS, CLUE_RECALL, rollKnowledge, rollSkill, moodFor, thresholdFor, decide, sketch, line, SEAT_COLORS, SEAT_SHAPES, MAX_SEATS, LIMITS, BOT_CANVAS, normalizeConfig, isPractice, placeGroup, spread, createGame, totals, botView, botLine, activeSeat, activeTurn, step, replay, revealedClues, results, RECORD_VERSION, emptyRecord, sanitizeRecord, recordGame, recordDrawing, LOG_KEY, LOG_MAX_GAMES, LOG_MAX_ERRORS, LOG_MAX_CHARS, gameLog, parseLog, addGameToLog, addErrorToLog };
+  return { hashString, deriveSeed, toSeed, createRng, isFinitePoint, signedArea, area, centroid, bbox, dist, perimeter, maxRadius, simplify, simplifyRing, resample, projectLAEA, rasterize, rasterizeUnion, countOn, moments, overlap, DEFAULT_CURVE, DEFAULT_RULES, ZERO_GAP, accuracyFromGap, stampValue, multiplierFor, validateCurve, basePointsFor, roundScore, JUDGE_DEFAULTS, unflatten, cleanStrokes, prepareTarget, outlineGap, blobBaseline, judge, outlineToCanvas, drawingAspect, outlineToBox, LANGS, NON_LATIN, fold, buildIndex, resolve, suggest, OPS, opOf, evalTest, filterByTests, CLUES_PER_ITEM, TIERS, expandPack, validatePack, preparePack, poolFor, hasCoords, clueFamily, pickClues, TEMPERAMENTS, FAME, CLUE_RECALL, rollKnowledge, rollSkill, moodFor, thresholdFor, decide, sketch, line, SEAT_COLORS, SEAT_SHAPES, MAX_SEATS, LIMITS, BOT_CANVAS, normalizeConfig, isPractice, placeGroup, spread, createGame, totals, botView, botLine, activeSeat, activeTurn, step, replay, revealedClues, results, RECORD_VERSION, emptyRecord, sanitizeRecord, recordGame, recordDrawing, LOG_KEY, LOG_MAX_GAMES, LOG_MAX_ERRORS, LOG_MAX_CHARS, gameLog, parseLog, addGameToLog, addErrorToLog };
 });
