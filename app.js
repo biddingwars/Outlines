@@ -165,6 +165,7 @@ function ask(title, body, yes, onYes, onNo, noLabel) {
 
 /* ============ LANGUAGE (strings.js holds every word) ============ */
 let LANG = 'en';
+const gamesTxt = n => n === 1 ? t('game1') : t('gamesN', { n });
 function t(key, vars) {
   let v = (STR[LANG] && STR[LANG][key]) || STR.en[key] || key;
   if (vars) Object.keys(vars).forEach(k => { v = v.split('{' + k + '}').join(vars[k]); });
@@ -242,7 +243,7 @@ function home() {
           <p class="tag">${esc(t('tagline'))}</p></div>
         <button class="glass recpill" id="mrec" aria-label="${esc(t('record'))}">
           <span class="big num">${REC.won}<i>–</i>${REC.lost}${REC.drawn ? `<i>–</i>${REC.drawn}` : ''}</span>
-          <span class="m"><b>${esc(t('record'))}</b><br>${has ? `${REC.played} ${esc(t('games'))} · ${Math.round(REC.won / REC.played * 100)}% ${esc(t('winRate'))}` : esc(t('noGames'))}</span>
+          <span class="m"><b>${esc(t('record'))}</b><br>${has ? `${esc(gamesTxt(REC.played))} · ${Math.round(REC.won / REC.played * 100)}% ${esc(t('winRate'))}` : esc(t('noGames'))}</span>
           ${has && REC.streak > 1 ? `<span class="streak">+${REC.streak}</span>` : ''}
         </button>
       </div>
@@ -919,7 +920,7 @@ async function reveal(sec, res, REC) {
   });
   /* the best drawing of the game and the record join the world card, which is already built */
   const best = res.best;
-  const recHtml = outcome ? `<div class="glass recpill" style="padding:8px 14px;order:0"><div class="big num" style="font-size:24px">${REC.won}<i>–</i>${REC.lost}${REC.drawn ? `<i>–</i>${REC.drawn}` : ''}</div><div class="m"><b>${esc(outcome.record ? t('newRecord') : t('record'))}</b><br>${REC.played} ${esc(t('games'))}${REC.streak ? ` · ${esc(t('streak'))} ${REC.streak > 0 ? '+' : ''}${REC.streak}` : ''}</div></div>` : res.practice ? `<div class="glass recpill" style="padding:8px 14px;order:0"><div class="m"><b>${esc(t('practiceTitle'))}</b><br>${esc(t('practiceNote'))}</div></div>` : '';
+  const recHtml = outcome ? `<div class="glass recpill" style="padding:8px 14px;order:0"><div class="big num" style="font-size:24px">${REC.won}<i>–</i>${REC.lost}${REC.drawn ? `<i>–</i>${REC.drawn}` : ''}</div><div class="m"><b>${esc(outcome.record ? t('newRecord') : t('record'))}</b><br>${esc(gamesTxt(REC.played))}${REC.streak ? ` · ${esc(t('streak'))} ${REC.streak > 0 ? '+' : ''}${REC.streak}` : ''}</div></div>` : res.practice ? `<div class="glass recpill" style="padding:8px 14px;order:0"><div class="m"><b>${esc(t('practiceTitle'))}</b><br>${esc(t('practiceNote'))}</div></div>` : '';
   const ex = $('#extra', sec);
   buildWorld(sec, res);
   ex.insertAdjacentHTML('beforeend', `${best && best.rings && best.rings.length ? `<div class="glass gl pxbest"><div class="cap"><b>${esc(t('best'))}</b>${esc(G.config.seats[best.seat].name)} · ${esc(nameOf(best.itemId))} · ${Math.round(best.accuracy * 100)}%</div><div class="pxbestsvg">${overlaySvg({ rings: best.rings, fit: best.fit }, best.itemId, !FX.reduced)}</div></div>` : ''}${recHtml}`);
