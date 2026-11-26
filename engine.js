@@ -2249,6 +2249,7 @@
           clues: state.clueSets[k].map((i) => [item.clues[i].tier, item.clues[i].text.en]),
           turns: (state.turns[k] ?? []).map((t) => ({
             seat: t.seat,
+            done: !!t.done, // false: the game was left before this turn was drawn
             guesses: t.guesses.map((g) => [g.clue, g.id, g.ok ? 1 : 0]),
             solvedAt: t.solvedAt ?? null,
             base: t.base ?? null,

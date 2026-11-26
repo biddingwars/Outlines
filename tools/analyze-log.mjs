@@ -34,7 +34,7 @@ const out = [];
 const say = (s = '') => out.push(s);
 
 const games = log.games;
-say(`# Project X game log: ${games.length} games, ${log.errors.length} distinct errors`);
+say(`# Outlines game log: ${games.length} games, ${log.errors.length} distinct errors`);
 if (games.length) {
   say(`From ${games[0].t ?? '?'} to ${games[games.length - 1].t ?? '?'} · app versions ${[...new Set(games.map((g) => g.app))].join(', ')} · languages ${[...new Set(games.map((g) => g.lang))].join(', ')}`);
   say(`Packs ${top(count(games.map((g) => `${g.pack}/${g.level}`))).map(([k, n]) => `${k} ×${n}`).join(', ')}`);
@@ -65,6 +65,7 @@ const bot = [];
 for (const g of games) {
   for (const r of g.r) {
     for (const t of r.turns) {
+      if (t.done === false) continue; // a turn the player never finished (the game was left): not a miss
       const row = { g, r, t, pack: g.pack };
       (g.seats[t.seat] === 'human' ? human : bot).push(row);
     }
