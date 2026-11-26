@@ -256,7 +256,7 @@ function home() {
         </div>
         <div class="dockbar">
           <button class="glass chipbtn" id="mr">${IC('book', 'sm')}${esc(t('how'))}</button>
-          <button class="glass chipbtn" id="ml" aria-label="${esc(t('language'))}: ${esc(lang.label)}"><span aria-hidden="true">${flag(langFlag(lang))}</span> ${esc(lang.label)}</button>
+          <button class="glass chipbtn" id="ml" aria-label="${esc(t('language'))}: ${esc(lang.label)}"><span aria-hidden="true">${flag(langFlag(lang))}</span><span class="lbl"> ${esc(lang.short || lang.label)}</span></button>
           <button class="glass chipbtn sq" id="mset" aria-label="${esc(t('settings'))}">${IC('gear', 'sm')}</button>
           <button class="glass chipbtn sq" id="mp" aria-label="${esc(t('privacy'))}">${IC('lock', 'sm')}</button>
         </div>

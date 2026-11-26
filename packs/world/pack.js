@@ -7,7 +7,7 @@ import base from './base.js';
 import { templates, vocab, frames } from './templates.js';
 import rawSource from './source.js';
 import outlines from './outlines.js';
-import { CAPITAL_FIX, NO_CAPITAL } from './lists.js';
+import { CAPITAL_FIX, NO_CAPITAL, ALIASES } from './lists.js';
 import { localize, ADDED } from '../i18n/localize.js';
 import { LANGS, NON_LATIN } from '../../engine/names.js';
 import { evalTest } from '../../engine/clues.js';
@@ -83,6 +83,16 @@ const nameIn = (id, l, src) => {
   return n ? (NON_LATIN.includes(l) ? n.en : n[l]) : null;
 };
 function fitsOf(id) {
+  const n = fitsRaw(id);
+  // a clue that names its own place is a give-away: tier 4 at the earliest (1.5, as name clues)
+  return (e) => {
+    const k = n(e);
+    const text = e[2] === true && e[1] && typeof e[1] === 'object' ? e[1].en : null;
+    const says = text ? nameStem(id).test(text) : typeof e[1] !== 'object' && saysOwnName(id, e);
+    return says && k <= 10 ? Math.min(k, 1.5) : k; // a broad clue ("Arabic is official", 24) barely hints
+  };
+}
+function fitsRaw(id) {
   return (e) => {
     if (e[2] === true) {
       const meta = e[3];
@@ -112,6 +122,32 @@ function fitsOf(id) {
   };
 }
 
+/**
+ * Does a template clue name its own place? "It has a coastline on the South China Sea" (China),
+ * "Its currency is the Egyptian pound" (Egypt), "Russian is an official language" (Russia).
+ * Such a clue gives the place away, so it is never used before tier 4 (beta hunt, Nov 2026).
+ */
+function saysOwnName(id, e) {
+  const tpl = templates[e[0]];
+  if (!tpl || typeof e[1] === 'object') return false;
+  const words = (x) => (tpl.vocab === 'cname' ? source[x]?.names.en : vocab[tpl.vocab]?.[x]?.en) ?? String(x);
+  const word = !tpl.vocab ? String(e[1] ?? '') : Array.isArray(e[1]) ? e[1].map(words).join(' and ') : words(e[1]);
+  const text = tpl.text.en.replaceAll('{x}', word);
+  return nameStem(id).test(text);
+}
+/**
+ * The distinctive words of a place's English name, as word starts: "Russi" matches "Russian",
+ * "Egypt" "Egyptian", "Guine" "Guinea". Generic words do not count ("North" Macedonia must not
+ * match "Northern Hemisphere", nor "Africa" in South Africa "It is in Africa").
+ */
+const GENERIC = new Set(['north', 'south', 'east', 'west', 'central', 'new', 'saint', 'st', 'united', 'republic', 'democratic', 'islands', 'island', 'equatorial', 'africa', 'african', 'america', 'american', 'arab', 'kingdom', 'states', 'federated', 'and', 'the', 'of', 'city', 'great', 'british']);
+function nameStem(id) {
+  const words = source[id].names.en.split(/[\s-]+/).filter((w) => w.length > 2 && !GENERIC.has(w.toLowerCase().replace(/[^a-z]/g, '')));
+  if (!words.length) return /$^/;
+  const esc = (w) => w.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  return new RegExp(`\\b(?:${words.map((w) => esc(w.length > 5 ? w.slice(0, 5) : w)).join('|')})`);
+}
+
 /** Clues placed in a tier they are too vague for ("tier:fits"), per country; see auto.js. */
 export const loose = {};
 const items = Object.entries(source).map(([id, s]) => {
@@ -122,7 +158,9 @@ const items = Object.entries(source).map(([id, s]) => {
     // Hand-written clues stay; a template clue far too general for its tier
     // ("It is a republic") makes room for a sharper automatic one.
     const fits = fitsOf(id);
-    const giveaway = (e) => e[0] <= 3 && KNOWN.has(tplTest(e.slice(1)).f) && fits(e.slice(1)) === 1; // "borders the UK" is Ireland
+    // "borders the UK" is Ireland; "a coastline on the South China Sea" names China
+    const raw = fitsRaw(id);
+    const giveaway = (e) => e[0] <= 3 && ((KNOWN.has(tplTest(e.slice(1)).f) && fits(e.slice(1)) === 1) || (saysOwnName(id, e.slice(1)) && raw(e.slice(1)) <= 10));
     const kept = pool.clues.filter((e) => typeof e[2] === 'object' || (fits(e.slice(1)) <= HAND_LIMIT[e[0]] && !giveaway(e)));
     const testOf = (e) => (e[2] === true || typeof e[1] === 'object' ? null : JSON.stringify(tplTest(e)));
     const taken = new Set(kept.filter((e) => typeof e[2] !== 'object').map((e) => testOf(e.slice(1))));
@@ -146,6 +184,14 @@ const items = Object.entries(source).map(([id, s]) => {
   if (geo && geo.share < 0.8) item.mainlandOnly = true;
   return item;
 });
+
+// Extra names: the hand-kept list, and "St" / "Saint" spelled both ways ("Saint Kitts and Nevis").
+const saintVariants = (n) => (/^St\.? /.test(n) ? [n.replace(/^St\.? /, 'Saint ')] : /^Saint /.test(n) ? [n.replace(/^Saint /, 'St ')] : []);
+for (const it of items) {
+  const own = new Set([...LANGS.map((l) => it.names?.[l]).filter(Boolean)].map((x) => x.toLowerCase()));
+  const extra = [...(ALIASES[it.id] ?? []), ...saintVariants(it.names.en)].filter((a) => !own.has(a.toLowerCase()));
+  if (extra.length) it.aliases = [...new Set([...(it.aliases ?? []), ...extra])];
+}
 
 const t = (en, de, it, es, fr) => ({ en, de, it, es, fr });
 

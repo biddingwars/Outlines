@@ -12,7 +12,7 @@ const LANGS=[
   {id:'es', flag:'ES', label:'Español'},
   {id:'fr', flag:'FR', label:'Français'},
   {id:'pt', flag:'BR', label:'Português'},
-  {id:'id', flag:'ID', label:'Bahasa Indonesia'},
+  {id:'id', flag:'ID', label:'Bahasa Indonesia', short:'Indonesia'},   // short: the menu chip (too long at 390 px)
   {id:'zh', flag:'CN', label:'中文'},
   {id:'hi', flag:'IN', label:'हिन्दी'},
   {id:'ja', flag:'JP', label:'日本語'},

@@ -29,3 +29,39 @@ export const CAPITAL_FIX = {
 };
 // Split, disputed or unofficial capitals: no capital clue at all.
 export const NO_CAPITAL = ['BOL', 'LKA', 'ISR', 'SWZ', 'NRU'];
+
+// Names players type that the data does not list: abbreviations, old and short names
+// (bug hunt, Nov 2026: "USA", "UAE", "DRC", "Czech Republic" were not recognised).
+export const ALIASES = {
+  USA: ['USA', 'U.S.A.', 'US', 'United States of America', 'America'],
+  ARE: ['UAE', 'Emirates'],
+  COD: ['DRC', 'DR Congo', 'Congo-Kinshasa', 'Zaire'],
+  COG: ['Republic of the Congo', 'Congo-Brazzaville', 'Congo Republic'],
+  CZE: ['Czech Republic', 'Czechia'],
+  VAT: ['Holy See', 'Vatican'],
+  PNG: ['PNG'],
+  NZL: ['NZ', 'Aotearoa'],
+  SAU: ['KSA', 'Saudi'],
+  IRN: ['Persia'],
+  LKA: ['Ceylon'],
+  THA: ['Siam'],
+  JPN: ['Nippon', 'Nihon'],
+  MMR: ['Burma'],
+  SWZ: ['Swaziland'],
+  MKD: ['Macedonia'],
+  TLS: ['East Timor'],
+  CPV: ['Cape Verde'],
+  CIV: ['Ivory Coast'],
+  TUR: ['Turkiye', 'Türkiye'],
+  BLR: ['Byelorussia'],
+  KOR: ['Korea', 'Republic of Korea'],
+  PRK: ['DPRK'],
+  GBR: ['UK', 'U.K.'],
+  CAF: ['CAR'],
+  BIH: ['Bosnia'],
+  TTO: ['Trinidad'],
+  ATG: ['Antigua'],
+  FSM: ['Micronesia'],
+  VCT: ['Saint Vincent and the Grenadines', 'St Vincent and the Grenadines', 'Saint Vincent', 'St Vincent'],
+  KNA: ['St Kitts', 'Saint Kitts'],
+};

@@ -144,3 +144,18 @@ test('every clue is specific enough for its tier, and nothing gives a place away
   }
   assert.deepEqual(bad, []);
 });
+
+test('no clue names its own country before tier 4', () => {
+  // bug hunt, Nov 2026: "a coastline on the South China Sea" was China's tier-2 clue
+  const cases = { CHN: /China/, JPN: /Japan/, MEX: /Mexic/, EGY: /Egypt/, RUS: /Russi/, NGA: /\bNiger\b/, GNB: /\bGuinea\b/ };
+  for (const [id, re] of Object.entries(cases)) {
+    const early = world.byId.get(id).clues.filter((c) => c.tier < 4 && re.test(c.text.en));
+    assert.deepEqual(early.map((c) => c.text.en), [], id);
+  }
+});
+
+test('common short and old country names are understood', () => {
+  // bug hunt, Nov 2026: "USA", "UAE", "DRC", "Czech Republic" … were "unknown"
+  const want = { USA: 'USA', UAE: 'ARE', DRC: 'COD', 'Czech Republic': 'CZE', 'Republic of the Congo': 'COG', 'Holy See': 'VAT', 'Saint Kitts and Nevis': 'KNA', 'Saint Vincent and the Grenadines': 'VCT', PNG: 'PNG', NZ: 'NZL', Burma: 'MMR', 'Ivory Coast': 'CIV', Persia: 'IRN', UK: 'GBR' };
+  for (const [q, id] of Object.entries(want)) assert.equal(resolve(world.index, q), id, q);
+});

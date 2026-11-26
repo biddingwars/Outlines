@@ -706,3 +706,15 @@ html[data-motion=reduce] .rays,html[data-motion=reduce] .confetti{display:none}
 .lb.many .f1 span:not(.sr){overflow:hidden;text-overflow:ellipsis}
 @media (max-width:420px){ .lb.many .f1{flex-basis:calc(33.3% - 3px)} }
 .lb.many .redact:not(.open){width:24px}
+
+/* the menu's bottom row on narrow phones: tighter so "How to play" and the language fit (bug hunt) */
+@media (max-width:430px){ .dockbar{gap:6px} .chipbtn{gap:5px;padding:0 7px;font-size:13.5px} #mr svg{display:none} }
+@media (max-width:360px){ .chipbtn{padding:0 4px;font-size:12px;letter-spacing:-.01em} #mr{white-space:normal;line-height:1.05;text-align:center} }
+/* the smallest phones (320 px, larger text): the game bar's Menu button shows its icon only (its text
+   stays for screen readers), the round label may shrink, and the menu's language chip shows the flag */
+@media (max-width:360px){
+  .nav .ibtn.pill{font-size:0;width:44px;padding:0;gap:0;justify-content:center}
+  .navr{gap:6px}
+  .lotpill{flex:0 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;letter-spacing:.06em;padding:5px 8px}
+  #ml{flex:none;width:46px;padding:0} #ml .lbl{display:none}
+}
