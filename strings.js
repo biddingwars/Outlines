@@ -2453,4 +2453,21 @@ const STRPTS = {
   th: { rulesP2: "เดาเร็วได้คะแนนมาก: คำใบ้ที่ 1 ได้ 6 คะแนน คำใบ้ที่ 5 ได้ 2 คะแนน เดาผิดจะเปิดคำใบ้ถัดไปและเสีย 1 คะแนน", rulesP5: "เกาะ: วาดเฉพาะแผ่นดินหลัก ถ้าพลาดทั้งห้าคำใบ้ ก็ยังได้ 1 คะแนน คูณด้วยความแม่นยำของภาพวาด", missedIt: "พลาด: ภาพวาดของคุณยังได้ 1 คะแนน × ความแม่นยำ" },
 };
 Object.keys(STRPTS).forEach(l => Object.assign(STR[l], STRPTS[l]));
+/* "1 game" / "{n} games" after a number (the menu said "1 Games") */
+const STRN = {
+  en: { game1: "1 game", gamesN: "{n} games" },
+  de: { game1: "1 Spiel", gamesN: "{n} Spiele" },
+  it: { game1: "1 partita", gamesN: "{n} partite" },
+  es: { game1: "1 partida", gamesN: "{n} partidas" },
+  fr: { game1: "1 partie", gamesN: "{n} parties" },
+  pt: { game1: "1 partida", gamesN: "{n} partidas" },
+  id: { game1: "1 permainan", gamesN: "{n} permainan" },
+  zh: { game1: "1 局", gamesN: "{n} 局" },
+  hi: { game1: "1 गेम", gamesN: "{n} गेम" },
+  ja: { game1: "1 ゲーム", gamesN: "{n} ゲーム" },
+  ko: { game1: "1게임", gamesN: "{n}게임" },
+  ar: { game1: "لعبة واحدة", gamesN: "عدد الألعاب: {n}" },
+  th: { game1: "1 เกม", gamesN: "{n} เกม" },
+};
+Object.keys(STRN).forEach(l => Object.assign(STR[l], STRN[l]));
 
