@@ -649,6 +649,25 @@ html[data-motion=reduce] .rays,html[data-motion=reduce] .confetti{display:none}
    then the cost note, so the timer ring and the clock never overlap the seats. */
 @container (max-height: 300px) { .stage > .head { display: none } }
 @container (max-height: 230px) { .stage > .taunt { display: none } }
+/* With name suggestions open the dock grows: the clue list gives up height first (it scrolls, and the current clue
+   is scrolled into view), the stage keeps room for the ring, and on short phones only two suggestions show, so the
+   ring never covers the nav or the seats and the guess box and "Next clue" stay on screen (bug hunt, Nov 2026). */
+#ctrl{flex:0 1 auto;min-height:0}
+#ctrl>*{flex:none}
+#ctrl>.pxclues{flex:0 1 auto;min-height:44px}
+.stage:not(.pxdrawstage){min-height:112px}
+@container (max-height: 150px) { .stage > .holder { display: none } }
+@media (max-height:699px){ .pxsugg li:nth-child(n+3){display:none} }
+@media (orientation:landscape) and (max-height:519px){
+  .aud{grid-template-rows:minmax(0,1fr)}
+  .aud-r{max-height:100%}
+  .pxsugg{flex-direction:row}
+  .pxsugg li{flex:1 1 0;min-width:0}
+  .pxsugg button{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;padding:0 10px}
+  .pxsugg button small{display:none}
+}
+/* the smallest phones on their side (320 px tall): while typing, the seats step aside for the dock */
+@media (orientation:landscape) and (max-height:359px){ .aud-r:has(.pxsugg li) .orbs{display:none} }
 
 /* ---------- polish: motion and small layout fixes (Reduce motion turns all of this off, above) ---------- */
 .btn,.mode,.chipbtn,.pack,.recpill{transition:transform .18s cubic-bezier(.3,1.4,.5,1),box-shadow .2s,filter .2s}
