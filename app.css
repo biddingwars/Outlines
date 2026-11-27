@@ -739,3 +739,10 @@ html[data-motion=reduce] .rays,html[data-motion=reduce] .confetti{display:none}
   .lotpill{flex:0 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;letter-spacing:.06em;padding:5px 8px}
   #ml{flex:none;width:46px;padding:0} #ml .lbl{display:none}
 }
+/* ordinary phones (361-430 px): with 30 rounds the French round label pushed the mute button off screen, and
+   "メニュー" / "菜单" wrapped onto two lines; the Menu label stays on one line and the round pill gives way, letters
+   closer first (bug hunt, Nov 2026) */
+@media (min-width:361px) and (max-width:430px){
+  .nav .ibtn.pill{white-space:nowrap;flex:none;padding:0 12px 0 9px;gap:5px}
+  .nav .lotpill{flex:0 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;letter-spacing:.06em;padding:5px 9px}
+}
