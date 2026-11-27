@@ -221,8 +221,10 @@ const recFor = id => RECS.packs[id] || (RECS.packs[id] = blankRec());
 async function loadRec() { RECS = parseRecs(await Store.get(REC_KEY)); if (RECS.last) SELPACK = RECS.last; }
 async function saveRec() { await Store.set(REC_KEY, JSON.stringify(RECS)); }
 async function clearRec() { const best = RECS.best; RECS = parseRecs(null); RECS.best = best; await saveRec(); }
-function applyGame(R, you, bot, level) {
-  const won = you > bot, lost = you < bot;
+/* outcome: 'won' | 'lost' | 'drawn', from the engine's ranking (equal points go to the better accuracy), so the record
+   agrees with the headline (bug hunt, Nov 2026) */
+function applyGame(R, you, bot, level, outcome) {
+  const won = outcome === 'won', lost = outcome === 'lost';
   R.played++; R.pts += you; R.botPts += bot;
   if (won) { R.won++; R.streak = R.streak > 0 ? R.streak + 1 : 1; } else if (lost) { R.lost++; R.streak = R.streak < 0 ? R.streak - 1 : -1; } else { R.drawn++; R.streak = 0; }
   R.best = Math.max(R.best, R.streak);
@@ -845,7 +847,8 @@ async function recordGame(res) {
   const humans = res.seats.filter(s => s.kind === 'human');
   if (G._kind !== 'solo' || humans.length !== 1 || res.practice) return null;
   const you = humans[0], bot = res.seats.filter(s => s.kind === 'bot').sort((a, b) => b.total - a.total)[0];
-  const out = applyGame(recFor(PACK.id), you.total, bot.total, G.config.difficulty);
+  const top = res.winners, outcome = top.length === 1 && top[0] === you.seat ? 'won' : top.includes(you.seat) ? 'drawn' : 'lost';
+  const out = applyGame(recFor(PACK.id), you.total, bot.total, G.config.difficulty, outcome);
   const at = new Date().toISOString().slice(0, 10);
   G.turns.forEach((round, k) => round.forEach(turn => {
     if (G.config.seats[turn.seat].kind !== 'human' || !turn.rings || !turn.rings.length) return;
@@ -862,7 +865,7 @@ function finish() {
   preloadResults();
   const res = Engine.results(PACK, G), REC = recFor(PACK.id);
   const red = (v, label) => `<button type="button" class="redact" data-v="${esc(v)}" aria-label="${esc(label || t('hiddenValue'))}"></button>`;
-  const order = res.seats.slice().sort((a, b) => b.total - a.total);
+  const order = res.ranking.map(r => res.seats.find(s => s.seat === r.seat));   // the engine's order: equal points go to the better accuracy
   const sec = go(`
     <div class="nav"><button class="ibtn pill" id="nb">${IC('menu')}${esc(t('menu'))}</button><span></span>${navBtns(false)}</div>
     <div class="res2">
