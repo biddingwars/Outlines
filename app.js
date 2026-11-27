@@ -605,7 +605,7 @@ function clueScreen() {
       <div class="aud-r">
         ${seatsHtml('clue')}
         <div class="glass dock" id="ctrl">
-          <ol class="pxclues">${clues.map((c, k) => `<li class="${k === clues.length - 1 ? 'cur' : ''}"><span class="n num">${k + 1}</span><span>${esc(c)}</span></li>`).join('')}${clues.length < 5 ? `<li class="later"><span class="n num">${clues.length + 1}</span><span>${esc(t('clueN', { n: clues.length + 1 }))} · ${esc(t('worth', { p: rules.basePoints[clues.length] }))}</span></li>` : ''}</ol>
+          <ol class="pxclues">${clues.map((c, k) => `<li class="${k === clues.length - 1 ? 'cur' : ''}"><span class="n num">${k + 1}</span><span>${esc(c)}</span></li>`).join('')}${clues.length < 5 ? `<li class="later"><span class="n num">${clues.length + 1}</span><span>${esc(t('clueN', { n: clues.length + 1 }))} · ${esc(t('worth', { p: Math.max(1, rules.basePoints[clues.length] - wrong * rules.wrongGuessPenalty) }))}</span></li>` : ''}</ol>
           <ul class="pxsugg" id="sugg" role="listbox"></ul>
           <div class="custom"><input class="in" id="cus" type="text" autocomplete="off" autocapitalize="words" autocorrect="off" spellcheck="false" placeholder="${esc(t('guessPh'))}" aria-label="${esc(t('guessPh'))}"><button class="btn gold" id="cb">${esc(t('guess'))}</button></div>
           <button class="btn ghost" id="pass">${esc(t('nextClue'))}</button>
