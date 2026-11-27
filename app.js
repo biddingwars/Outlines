@@ -397,7 +397,7 @@ async function recordScreen() {
   const h = sheet({ title: t('record'), foot: `${REC.played ? `<button class="btn ghost" id="rs">${esc(t('reset'))}</button>` : ''}<button class="btn gold" id="rd">${esc(t('done'))}</button>`,
     body: `<p class="label">${esc(Packs.meta(SELPACK).title[LANG] || Packs.meta(SELPACK).title.en)}</p>` + (REC.played ? `
       <div class="rec3"><div class="w"><div class="rn num">${REC.won}</div><div class="rl">${esc(t('wins'))}</div></div><div><div class="rn num">${REC.lost}</div><div class="rl">${esc(t('losses'))}</div></div><div><div class="rn num">${REC.drawn}</div><div class="rl">${esc(t('draws'))}</div></div></div>
-      <div class="group">${row(t('games'), REC.played)}${row(t('winRate'), pct + '%')}${row(t('streak'), signed(REC.streak))}${row(t('bestStreak'), ltr('+' + REC.best))}${row(t('avgPts'), fmtN(avg) + ' — ' + fmtN(avgBot))}${REC.bestGame ? row(t('bestGame'), fmtN(REC.bestGame.pts)) : ''}${row(t('bestSaved'), bestN)}</div>
+      <div class="group">${row(t('games'), REC.played)}${row(t('winRate'), pct + '%')}${row(t('streak'), signed(REC.streak))}${row(t('bestStreak'), signed(REC.best))}${row(t('avgPts'), fmtN(avg) + ' — ' + fmtN(avgBot))}${REC.bestGame ? row(t('bestGame'), fmtN(REC.bestGame.pts)) : ''}${row(t('bestSaved'), bestN)}</div>
       ${Object.keys(REC.byLevel).length ? `<div class="group">${Object.keys(REC.byLevel).map(k => row(lvlName(k), REC.byLevel[k].won + '/' + REC.byLevel[k].played)).join('')}</div>` : ''}
       <p class="sm">${esc(t('recordNote'))}</p>` : `<p>${esc(t('noGames'))}</p>`) });
   on('rd', () => { Snd.ui(); h.close(); });
