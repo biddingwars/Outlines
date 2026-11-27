@@ -25,6 +25,12 @@ const fmtX = m => (m >= 1000 ? fmtN(m) : String(m).replace('.', LANG === 'en' ? 
 const app = document.getElementById('app');
 const layer = document.getElementById('layer');
 const rootEl = document.getElementById('root');
+/* a double tap must not land on the next screen's button: "Next clue" on clue 5 sits where "Done" appears on the empty
+   canvas, and "Next round" where the next player's "Ready" appears. During a game, clicks in the first 350 ms after a
+   screen change are dropped (bug hunt, Nov 2026; as in Bidding Wars) */
+let shownAt = 0;
+const TAP_LOCK_MS = 350;
+app.addEventListener('click', e => { if (G && performance.now() - shownAt < TAP_LOCK_MS) { e.stopPropagation(); e.preventDefault(); } }, true);
 let G = null;                                       // the engine's game state
 let CFG = null;                                     // the config it was created from
 let navTok = 0;
@@ -93,7 +99,7 @@ function go(h, name) {
   if (stopGlobe) { stopGlobe(); stopGlobe = null; }
   const sec = document.createElement('section');
   sec.className = 'screen'; sec.dataset.screen = name || 'page'; sec.innerHTML = h;
-  app.replaceChildren(sec);
+  app.replaceChildren(sec); shownAt = performance.now();
   document.body.classList.toggle('playing', name === 'auction');
   syncPackTheme();
   bindNav(sec);
