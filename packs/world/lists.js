@@ -36,7 +36,7 @@ export const ALIASES = {
   USA: ['USA', 'U.S.A.', 'US', 'United States of America', 'America'],
   ARE: ['UAE', 'Emirates'],
   COD: ['DRC', 'DR Congo', 'Congo-Kinshasa', 'Zaire'],
-  COG: ['Republic of the Congo', 'Congo-Brazzaville', 'Congo Republic'],
+  COG: ['Republic of the Congo', 'Republic of Congo', 'Congo-Brazzaville', 'Congo Republic'],
   CZE: ['Czech Republic', 'Czechia'],
   VAT: ['Holy See', 'Vatican'],
   PNG: ['PNG'],

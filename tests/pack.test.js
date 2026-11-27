@@ -156,6 +156,6 @@ test('no clue names its own country before tier 4', () => {
 
 test('common short and old country names are understood', () => {
   // bug hunt, Nov 2026: "USA", "UAE", "DRC", "Czech Republic" … were "unknown"
-  const want = { USA: 'USA', UAE: 'ARE', DRC: 'COD', 'Czech Republic': 'CZE', 'Republic of the Congo': 'COG', 'Holy See': 'VAT', 'Saint Kitts and Nevis': 'KNA', 'Saint Vincent and the Grenadines': 'VCT', PNG: 'PNG', NZ: 'NZL', Burma: 'MMR', 'Ivory Coast': 'CIV', Persia: 'IRN', UK: 'GBR' };
+  const want = { USA: 'USA', UAE: 'ARE', DRC: 'COD', 'Czech Republic': 'CZE', 'Republic of the Congo': 'COG', 'Republic of Congo': 'COG', 'Holy See': 'VAT', 'Saint Kitts and Nevis': 'KNA', 'Saint Vincent and the Grenadines': 'VCT', PNG: 'PNG', NZ: 'NZL', Burma: 'MMR', 'Ivory Coast': 'CIV', Persia: 'IRN', UK: 'GBR' };
   for (const [q, id] of Object.entries(want)) assert.equal(resolve(world.index, q), id, q);
 });
