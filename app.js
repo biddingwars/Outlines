@@ -636,7 +636,9 @@ function clueScreen() {
     showCur();
   };
   const submit = () => {
-    const p = sel >= 0 ? sugg[sel] : sugg.length === 1 ? sugg[0] : null;
+    /* a lone suggestion stands in only when the typed text names no place itself: "Boliva" (one letter off Bolivia)
+       must not guess Venezuela, the one place whose name has a word starting "Boliva" (bug hunt, Nov 2026) */
+    const p = sel >= 0 ? sugg[sel] : sugg.length === 1 && !Engine.resolve(PACK.index, inp.value) ? sugg[0] : null;
     if (p) return act({ type: 'guess', id: p.id });
     if (!inp.value.trim()) { FX.shakeX(inp); return; }
     act({ type: 'guess', text: inp.value });
