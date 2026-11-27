@@ -16,7 +16,16 @@ const cname = it => (it.names && (it.names[LANG] || it.names.en)) || it.id;
 const flag = code => code.split('').map(ch => String.fromCodePoint(0x1F1E6 + ch.charCodeAt(0) - 65)).join('');
 function icon(it) { return it.iso2 ? flag(it.iso2) : `<span class="ibadge">${esc(it.id)}</span>`; }
 let SELPACK = DEFAULT_PACK;                         // the pack picked on the menu
-const ini = n => { const t = String(n || '?').trim(), m = t.match(/^(.*\S)\s+(\d)$/); return ((Array.from(m ? m[1] : t)[0] || '?') + (m ? m[2] : '')).toUpperCase(); };
+/* the first whole character a reader sees: a Hindi conjunct ("क्षे"), an emoji flag or a letter with its accent, not half
+   of one (Intl.Segmenter where the browser has it; as in Bidding Wars) */
+const graphemes = s => { try { if (Intl.Segmenter) return [...new Intl.Segmenter().segment(s)].map(x => x.segment); } catch (e) {} return Array.from(s); };
+const ini = n => { const t = String(n || '?').trim(), m = t.match(/^(.*\S)\s+(\d)$/); return ((graphemes(m ? m[1] : t)[0] || '?') + (m ? m[2] : '')).toUpperCase(); };   // "Bot 2" -> B2
+/* the initial on a seat's orb; when two seats would share one ("Ben" and "Bot"), those two show two characters ("Be", "Bo") */
+const seatIni = (name, seats) => {
+  const mine = ini(name), list = seats || (G && G.config.seats) || [];
+  if (list.filter(q => ini(q.name) === mine).length < 2) return mine;
+  const g = graphemes(String(name).trim()); return g.length > 1 ? g[0].toUpperCase() + g[1].toLowerCase() : mine;
+};
 /* a streak with its sign: "+3", "-2", "0". In Arabic the bidi algorithm moved the minus behind the number ("3-"), so
    the number is wrapped in left-to-right marks when the page runs right to left (bug hunt, Nov 2026) */
 const ltr = s => document.documentElement.dir === 'rtl' ? '\u200E' + s + '\u200E' : String(s);
@@ -564,7 +573,7 @@ function seatsHtml(phase) {
     if (active) st = phase === 'draw' ? t('drawing') : t('guessing');
     else if (s.kind === 'bot') st = botDone(i, turn) ? t('lockedIn') : t('thinking');
     else st = G.turns[G.round][i].done ? t('lockedIn') : t('waiting');
-    return `<div class="po${active ? ' active' : ''}" data-i="${i}" role="group" aria-label="${esc(s.name)}, ${esc(st)}"><span class="now">${esc(active ? st : t('thinking'))}</span><div class="o s${seatOf(i)}" aria-hidden="true">${esc(ini(s.name))}</div><div class="nm">${esc(s.name)}</div><div class="rl" ${s.kind === 'bot' ? `data-bot="${i}"` : ''}>${esc(active ? '' : st)}</div></div>`;
+    return `<div class="po${active ? ' active' : ''}" data-i="${i}" role="group" aria-label="${esc(s.name)}, ${esc(st)}"><span class="now">${esc(active ? st : t('thinking'))}</span><div class="o s${seatOf(i)}" aria-hidden="true">${esc(seatIni(s.name))}</div><div class="nm">${esc(s.name)}</div><div class="rl" ${s.kind === 'bot' ? `data-bot="${i}"` : ''}>${esc(active ? '' : st)}</div></div>`;
   }).join('')}</div>`;
 }
 function botDone(i, turn) {
@@ -580,7 +589,7 @@ function handoff() {
   const s = seatNow();
   const sec = go(`${navGame(roundPill(), false)}
     <div class="pxcenter"><div class="glass win pxcard">
-      <div class="o s${seatOf(s)}" style="width:96px;height:96px;font-size:40px;margin:0 auto 10px" aria-hidden="true">${esc(ini(G.config.seats[s].name))}</div>
+      <div class="o s${seatOf(s)}" style="width:96px;height:96px;font-size:40px;margin:0 auto 10px" aria-hidden="true">${esc(seatIni(G.config.seats[s].name))}</div>
       <p class="label">${esc(t('passTo'))}</p><h2>${esc(G.config.seats[s].name)}</h2><p>${esc(t('passNote'))}</p>
       <button class="btn gold big" id="rdy" style="margin-top:14px">${esc(t('ready'))}</button></div></div>`, 'auction');
   bindGameNav();
@@ -878,7 +887,7 @@ function finish() {
       <div class="r-l">
         <div class="glass win" id="verdict"><div class="crown" aria-hidden="true">🔒</div><h2>${esc(t('sealed'))}</h2><p>${esc(t('revealShort'))}</p></div>
         <div class="glass lb${G.config.rounds > 10 ? ' many' : ''}" id="lb">${order.map(r => `
-          <div class="lbr"><div class="o s${seatOf(r.seat)}" aria-hidden="true">${esc(ini(r.name))}</div><div class="n">${esc(r.name)}</div><div class="p">${red(fmtN(r.total), t('points') + ' · ' + r.name)}</div></div>
+          <div class="lbr"><div class="o s${seatOf(r.seat)}" aria-hidden="true">${esc(seatIni(r.name))}</div><div class="n">${esc(r.name)}</div><div class="p">${red(fmtN(r.total), t('points') + ' · ' + r.name)}</div></div>
           <div class="fl">${r.rounds.map(x => { const it = itemOf(x.itemId); return `<span class="f1"><em aria-hidden="true">${icon(it)}</em><span class="sr">${esc(cname(it))}</span><span>${Math.round(x.accuracy * 100)}%</span><s>${red(fmtN(x.score), cname(it))}</s></span>`; }).join('')}</div>`).join('')}
         </div>
         <div class="acts" id="acts"><button class="btn gold wide" id="rev">${esc(t('liftAll'))}</button></div>
