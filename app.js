@@ -16,7 +16,20 @@ const cname = it => (it.names && (it.names[LANG] || it.names.en)) || it.id;
 const flag = code => code.split('').map(ch => String.fromCodePoint(0x1F1E6 + ch.charCodeAt(0) - 65)).join('');
 function icon(it) { return it.iso2 ? flag(it.iso2) : `<span class="ibadge">${esc(it.id)}</span>`; }
 let SELPACK = DEFAULT_PACK;                         // the pack picked on the menu
-const ini = n => { const t = String(n || '?').trim(), m = t.match(/^(.*\S)\s+(\d)$/); return ((Array.from(m ? m[1] : t)[0] || '?') + (m ? m[2] : '')).toUpperCase(); };
+/* the first whole character a reader sees: a Hindi conjunct ("क्षे"), an emoji flag or a letter with its accent, not half
+   of one (Intl.Segmenter where the browser has it; as in Bidding Wars) */
+const graphemes = s => { try { if (Intl.Segmenter) return [...new Intl.Segmenter().segment(s)].map(x => x.segment); } catch (e) {} return Array.from(s); };
+const ini = n => { const t = String(n || '?').trim(), m = t.match(/^(.*\S)\s+(\d)$/); return ((graphemes(m ? m[1] : t)[0] || '?') + (m ? m[2] : '')).toUpperCase(); };   // "Bot 2" -> B2
+/* the initial on a seat's orb; when two seats would share one ("Ben" and "Bot"), those two show two characters ("Be", "Bo") */
+const seatIni = (name, seats) => {
+  const mine = ini(name), list = seats || (G && G.config.seats) || [];
+  if (list.filter(q => ini(q.name) === mine).length < 2) return mine;
+  const g = graphemes(String(name).trim()); return g.length > 1 ? g[0].toUpperCase() + g[1].toLowerCase() : mine;
+};
+/* a streak with its sign: "+3", "-2", "0". In Arabic the bidi algorithm moved the minus behind the number ("3-"), so
+   the number is wrapped in left-to-right marks when the page runs right to left (bug hunt, Nov 2026) */
+const ltr = s => document.documentElement.dir === 'rtl' ? '\u200E' + s + '\u200E' : String(s);
+const signed = n => { n = Number(n) || 0; return ltr(n > 0 ? '+' + n : String(n)); };
 const IC = (id, cls) => `<svg class="i ${cls || ''}" aria-hidden="true" focusable="false"><use href="#i-${id}"/></svg>`;
 const fmtN = n => Number(n).toLocaleString(LANG);
 const fmtX = m => (m >= 1000 ? fmtN(m) : String(m).replace('.', LANG === 'en' ? '.' : ','));
@@ -25,6 +38,12 @@ const fmtX = m => (m >= 1000 ? fmtN(m) : String(m).replace('.', LANG === 'en' ? 
 const app = document.getElementById('app');
 const layer = document.getElementById('layer');
 const rootEl = document.getElementById('root');
+/* a double tap must not land on the next screen's button: "Next clue" on clue 5 sits where "Done" appears on the empty
+   canvas, and "Next round" where the next player's "Ready" appears. During a game, clicks in the first 350 ms after a
+   screen change are dropped (bug hunt, Nov 2026; as in Bidding Wars) */
+let shownAt = 0;
+const TAP_LOCK_MS = 350;
+app.addEventListener('click', e => { if (G && performance.now() - shownAt < TAP_LOCK_MS) { e.stopPropagation(); e.preventDefault(); } }, true);
 let G = null;                                       // the engine's game state
 let CFG = null;                                     // the config it was created from
 let navTok = 0;
@@ -93,7 +112,7 @@ function go(h, name) {
   if (stopGlobe) { stopGlobe(); stopGlobe = null; }
   const sec = document.createElement('section');
   sec.className = 'screen'; sec.dataset.screen = name || 'page'; sec.innerHTML = h;
-  app.replaceChildren(sec);
+  app.replaceChildren(sec); shownAt = performance.now();
   document.body.classList.toggle('playing', name === 'auction');
   syncPackTheme();
   bindNav(sec);
@@ -215,8 +234,10 @@ const recFor = id => RECS.packs[id] || (RECS.packs[id] = blankRec());
 async function loadRec() { RECS = parseRecs(await Store.get(REC_KEY)); if (RECS.last) SELPACK = RECS.last; }
 async function saveRec() { await Store.set(REC_KEY, JSON.stringify(RECS)); }
 async function clearRec() { const best = RECS.best; RECS = parseRecs(null); RECS.best = best; await saveRec(); }
-function applyGame(R, you, bot, level) {
-  const won = you > bot, lost = you < bot;
+/* outcome: 'won' | 'lost' | 'drawn', from the engine's ranking (equal points go to the better accuracy), so the record
+   agrees with the headline (bug hunt, Nov 2026) */
+function applyGame(R, you, bot, level, outcome) {
+  const won = outcome === 'won', lost = outcome === 'lost';
   R.played++; R.pts += you; R.botPts += bot;
   if (won) { R.won++; R.streak = R.streak > 0 ? R.streak + 1 : 1; } else if (lost) { R.lost++; R.streak = R.streak < 0 ? R.streak - 1 : -1; } else { R.drawn++; R.streak = 0; }
   R.best = Math.max(R.best, R.streak);
@@ -244,7 +265,7 @@ function home() {
         <button class="glass recpill" id="mrec" aria-label="${esc(t('record'))}">
           <span class="big num">${REC.won}<i>–</i>${REC.lost}${REC.drawn ? `<i>–</i>${REC.drawn}` : ''}</span>
           <span class="m"><b>${esc(t('record'))}</b><br>${has ? `${esc(gamesTxt(REC.played))} · ${Math.round(REC.won / REC.played * 100)}% ${esc(t('winRate'))}` : esc(t('noGames'))}</span>
-          ${has && REC.streak > 1 ? `<span class="streak">+${REC.streak}</span>` : ''}
+          ${has && REC.streak > 1 ? `<span class="streak">${signed(REC.streak)}</span>` : ''}
         </button>
       </div>
       <div class="m-r">
@@ -385,7 +406,7 @@ async function recordScreen() {
   const h = sheet({ title: t('record'), foot: `${REC.played ? `<button class="btn ghost" id="rs">${esc(t('reset'))}</button>` : ''}<button class="btn gold" id="rd">${esc(t('done'))}</button>`,
     body: `<p class="label">${esc(Packs.meta(SELPACK).title[LANG] || Packs.meta(SELPACK).title.en)}</p>` + (REC.played ? `
       <div class="rec3"><div class="w"><div class="rn num">${REC.won}</div><div class="rl">${esc(t('wins'))}</div></div><div><div class="rn num">${REC.lost}</div><div class="rl">${esc(t('losses'))}</div></div><div><div class="rn num">${REC.drawn}</div><div class="rl">${esc(t('draws'))}</div></div></div>
-      <div class="group">${row(t('games'), REC.played)}${row(t('winRate'), pct + '%')}${row(t('streak'), REC.streak > 0 ? '+' + REC.streak : REC.streak)}${row(t('bestStreak'), '+' + REC.best)}${row(t('avgPts'), fmtN(avg) + ' — ' + fmtN(avgBot))}${REC.bestGame ? row(t('bestGame'), fmtN(REC.bestGame.pts)) : ''}${row(t('bestSaved'), bestN)}</div>
+      <div class="group">${row(t('games'), REC.played)}${row(t('winRate'), pct + '%')}${row(t('streak'), signed(REC.streak))}${row(t('bestStreak'), signed(REC.best))}${row(t('avgPts'), fmtN(avg) + ' — ' + fmtN(avgBot))}${REC.bestGame ? row(t('bestGame'), fmtN(REC.bestGame.pts)) : ''}${row(t('bestSaved'), bestN)}</div>
       ${Object.keys(REC.byLevel).length ? `<div class="group">${Object.keys(REC.byLevel).map(k => row(lvlName(k), REC.byLevel[k].won + '/' + REC.byLevel[k].played)).join('')}</div>` : ''}
       <p class="sm">${esc(t('recordNote'))}</p>` : `<p>${esc(t('noGames'))}</p>`) });
   on('rd', () => { Snd.ui(); h.close(); });
@@ -552,7 +573,7 @@ function seatsHtml(phase) {
     if (active) st = phase === 'draw' ? t('drawing') : t('guessing');
     else if (s.kind === 'bot') st = botDone(i, turn) ? t('lockedIn') : t('thinking');
     else st = G.turns[G.round][i].done ? t('lockedIn') : t('waiting');
-    return `<div class="po${active ? ' active' : ''}" data-i="${i}" role="group" aria-label="${esc(s.name)}, ${esc(st)}"><span class="now">${esc(active ? st : t('thinking'))}</span><div class="o s${seatOf(i)}" aria-hidden="true">${esc(ini(s.name))}</div><div class="nm">${esc(s.name)}</div><div class="rl" ${s.kind === 'bot' ? `data-bot="${i}"` : ''}>${esc(active ? '' : st)}</div></div>`;
+    return `<div class="po${active ? ' active' : ''}" data-i="${i}" role="group" aria-label="${esc(s.name)}, ${esc(st)}"><span class="now">${esc(active ? st : t('thinking'))}</span><div class="o s${seatOf(i)}" aria-hidden="true">${esc(seatIni(s.name))}</div><div class="nm">${esc(s.name)}</div><div class="rl" ${s.kind === 'bot' ? `data-bot="${i}"` : ''}>${esc(active ? '' : st)}</div></div>`;
   }).join('')}</div>`;
 }
 function botDone(i, turn) {
@@ -568,7 +589,7 @@ function handoff() {
   const s = seatNow();
   const sec = go(`${navGame(roundPill(), false)}
     <div class="pxcenter"><div class="glass win pxcard">
-      <div class="o s${seatOf(s)}" style="width:96px;height:96px;font-size:40px;margin:0 auto 10px" aria-hidden="true">${esc(ini(G.config.seats[s].name))}</div>
+      <div class="o s${seatOf(s)}" style="width:96px;height:96px;font-size:40px;margin:0 auto 10px" aria-hidden="true">${esc(seatIni(G.config.seats[s].name))}</div>
       <p class="label">${esc(t('passTo'))}</p><h2>${esc(G.config.seats[s].name)}</h2><p>${esc(t('passNote'))}</p>
       <button class="btn gold big" id="rdy" style="margin-top:14px">${esc(t('ready'))}</button></div></div>`, 'auction');
   bindGameNav();
@@ -599,7 +620,7 @@ function clueScreen() {
       <div class="aud-r">
         ${seatsHtml('clue')}
         <div class="glass dock" id="ctrl">
-          <ol class="pxclues">${clues.map((c, k) => `<li class="${k === clues.length - 1 ? 'cur' : ''}"><span class="n num">${k + 1}</span><span>${esc(c)}</span></li>`).join('')}${clues.length < 5 ? `<li class="later"><span class="n num">${clues.length + 1}</span><span>${esc(t('clueN', { n: clues.length + 1 }))} · ${esc(t('worth', { p: rules.basePoints[clues.length] }))}</span></li>` : ''}</ol>
+          <ol class="pxclues">${clues.map((c, k) => `<li class="${k === clues.length - 1 ? 'cur' : ''}"><span class="n num">${k + 1}</span><span>${esc(c)}</span></li>`).join('')}${clues.length < 5 ? `<li class="later"><span class="n num">${clues.length + 1}</span><span>${esc(t('clueN', { n: clues.length + 1 }))} · ${esc(t('worth', { p: Math.max(1, rules.basePoints[clues.length] - wrong * rules.wrongGuessPenalty) }))}</span></li>` : ''}</ol>
           <ul class="pxsugg" id="sugg" role="listbox"></ul>
           <div class="custom"><input class="in" id="cus" type="text" autocomplete="off" autocapitalize="words" autocorrect="off" spellcheck="false" placeholder="${esc(t('guessPh'))}" aria-label="${esc(t('guessPh'))}"><button class="btn gold" id="cb">${esc(t('guess'))}</button></div>
           <button class="btn ghost" id="pass">${esc(t('nextClue'))}</button>
@@ -609,14 +630,28 @@ function clueScreen() {
   bindGameNav();
   const inp = $('#cus', sec), ul = $('#sugg', sec);
   let sugg = [], sel = -1;
+  /* the list scrolls on small phones: keep the newest clue (the give-away at 4 and 5) in view, its top first if it is
+     taller than the list (bug hunt, Nov 2026) */
+  const list = $('.pxclues', sec), cur = $('li.cur', list);
+  const showCur = () => {
+    if (!cur || !list.isConnected) return;
+    const top = cur.offsetTop - (cur.offsetParent === list ? 0 : list.offsetTop) - list.clientTop, h = cur.offsetHeight, view = list.clientHeight;
+    if (h >= view || top < list.scrollTop) list.scrollTop = top;
+    else if (top + h > list.scrollTop + view) list.scrollTop = top + h - view;
+  };
+  showCur();
+  if (window.ResizeObserver && cur) new ResizeObserver(showCur).observe(list);
   const paintSugg = () => {
     sugg = inp.value.trim() ? Engine.suggest(PACK.index, inp.value, LANG, 3) : [];
     if (sel >= sugg.length) sel = sugg.length - 1;
     ul.innerHTML = sugg.map((s, i) => `<li><button type="button" data-pick="${s.id}" aria-selected="${i === sel}">${esc(s.label)}${s.matched ? `<small>${esc(s.matched)}</small>` : ''}</button></li>`).join('');
     $$('[data-pick]', ul).forEach(b => b.onclick = () => { Snd.ui(); act({ type: 'guess', id: b.dataset.pick }); });
+    showCur();
   };
   const submit = () => {
-    const p = sel >= 0 ? sugg[sel] : sugg.length === 1 ? sugg[0] : null;
+    /* a lone suggestion stands in only when the typed text names no place itself: "Boliva" (one letter off Bolivia)
+       must not guess Venezuela, the one place whose name has a word starting "Boliva" (bug hunt, Nov 2026) */
+    const p = sel >= 0 ? sugg[sel] : sugg.length === 1 && !Engine.resolve(PACK.index, inp.value) ? sugg[0] : null;
     if (p) return act({ type: 'guess', id: p.id });
     if (!inp.value.trim()) { FX.shakeX(inp); return; }
     act({ type: 'guess', text: inp.value });
@@ -827,7 +862,8 @@ async function recordGame(res) {
   const humans = res.seats.filter(s => s.kind === 'human');
   if (G._kind !== 'solo' || humans.length !== 1 || res.practice) return null;
   const you = humans[0], bot = res.seats.filter(s => s.kind === 'bot').sort((a, b) => b.total - a.total)[0];
-  const out = applyGame(recFor(PACK.id), you.total, bot.total, G.config.difficulty);
+  const top = res.winners, outcome = top.length === 1 && top[0] === you.seat ? 'won' : top.includes(you.seat) ? 'drawn' : 'lost';
+  const out = applyGame(recFor(PACK.id), you.total, bot.total, G.config.difficulty, outcome);
   const at = new Date().toISOString().slice(0, 10);
   G.turns.forEach((round, k) => round.forEach(turn => {
     if (G.config.seats[turn.seat].kind !== 'human' || !turn.rings || !turn.rings.length) return;
@@ -844,14 +880,14 @@ function finish() {
   preloadResults();
   const res = Engine.results(PACK, G), REC = recFor(PACK.id);
   const red = (v, label) => `<button type="button" class="redact" data-v="${esc(v)}" aria-label="${esc(label || t('hiddenValue'))}"></button>`;
-  const order = res.seats.slice().sort((a, b) => b.total - a.total);
+  const order = res.ranking.map(r => res.seats.find(s => s.seat === r.seat));   // the engine's order: equal points go to the better accuracy
   const sec = go(`
     <div class="nav"><button class="ibtn pill" id="nb">${IC('menu')}${esc(t('menu'))}</button><span></span>${navBtns(false)}</div>
     <div class="res2">
       <div class="r-l">
         <div class="glass win" id="verdict"><div class="crown" aria-hidden="true">🔒</div><h2>${esc(t('sealed'))}</h2><p>${esc(t('revealShort'))}</p></div>
         <div class="glass lb${G.config.rounds > 10 ? ' many' : ''}" id="lb">${order.map(r => `
-          <div class="lbr"><div class="o s${seatOf(r.seat)}" aria-hidden="true">${esc(ini(r.name))}</div><div class="n">${esc(r.name)}</div><div class="p">${red(fmtN(r.total), t('points') + ' · ' + r.name)}</div></div>
+          <div class="lbr"><div class="o s${seatOf(r.seat)}" aria-hidden="true">${esc(seatIni(r.name))}</div><div class="n">${esc(r.name)}</div><div class="p">${red(fmtN(r.total), t('points') + ' · ' + r.name)}</div></div>
           <div class="fl">${r.rounds.map(x => { const it = itemOf(x.itemId); return `<span class="f1"><em aria-hidden="true">${icon(it)}</em><span class="sr">${esc(cname(it))}</span><span>${Math.round(x.accuracy * 100)}%</span><s>${red(fmtN(x.score), cname(it))}</s></span>`; }).join('')}</div>`).join('')}
         </div>
         <div class="acts" id="acts"><button class="btn gold wide" id="rev">${esc(t('liftAll'))}</button></div>
@@ -920,7 +956,7 @@ async function reveal(sec, res, REC) {
   });
   /* the best drawing of the game and the record join the world card, which is already built */
   const best = res.best;
-  const recHtml = outcome ? `<div class="glass recpill" style="padding:8px 14px;order:0"><div class="big num" style="font-size:24px">${REC.won}<i>–</i>${REC.lost}${REC.drawn ? `<i>–</i>${REC.drawn}` : ''}</div><div class="m"><b>${esc(outcome.record ? t('newRecord') : t('record'))}</b><br>${esc(gamesTxt(REC.played))}${REC.streak ? ` · ${esc(t('streak'))} ${REC.streak > 0 ? '+' : ''}${REC.streak}` : ''}</div></div>` : res.practice ? `<div class="glass recpill" style="padding:8px 14px;order:0"><div class="m"><b>${esc(t('practiceTitle'))}</b><br>${esc(t('practiceNote'))}</div></div>` : '';
+  const recHtml = outcome ? `<div class="glass recpill" style="padding:8px 14px;order:0"><div class="big num" style="font-size:24px">${REC.won}<i>–</i>${REC.lost}${REC.drawn ? `<i>–</i>${REC.drawn}` : ''}</div><div class="m"><b>${esc(outcome.record ? t('newRecord') : t('record'))}</b><br>${esc(gamesTxt(REC.played))}${REC.streak ? ` · ${esc(t('streak'))} ${signed(REC.streak)}` : ''}</div></div>` : res.practice ? `<div class="glass recpill" style="padding:8px 14px;order:0"><div class="m"><b>${esc(t('practiceTitle'))}</b><br>${esc(t('practiceNote'))}</div></div>` : '';
   const ex = $('#extra', sec);
   buildWorld(sec, res);
   ex.insertAdjacentHTML('beforeend', `${best && best.rings && best.rings.length ? `<div class="glass gl pxbest"><div class="cap"><b>${esc(t('best'))}</b>${esc(G.config.seats[best.seat].name)} · ${esc(nameOf(best.itemId))} · ${Math.round(best.accuracy * 100)}%</div><div class="pxbestsvg">${overlaySvg({ rings: best.rings, fit: best.fit }, best.itemId, !FX.reduced)}</div></div>` : ''}${recHtml}`);
