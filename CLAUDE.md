@@ -18,7 +18,12 @@ relative paths: `index.html`, `app.css`, `app.js`, `strings.js`, `engine.js`,
 `packs.js`, `pack-countries.js`, `pack-states.js`, `globe.js`, `us-view.js`,
 `us-map.js`, `platform.js`, `sound.js`, `fx.js`, `sw.js`, `manifest.json`, images.
 Dev-only folders: `engine/` (engine source), `packs/` (pack sources and generated
-outlines), `tools/`, `tests/`, `docs/`. The game never references them.
+outlines), `tools/`, `tests/`, `docs/`, and `native/` (v21): the iOS app — Capacitor 8 config, the
+generated Xcode project (`native/ios/`), the privacy manifest, and `copy-web.mjs`, which copies the files
+of `sw.js`'s `SHELL` list into `native/www` (git-ignored) for the app bundle. How to build it:
+`native/README.md`; `tests/native.test.js` checks it. The game never references them.
+Unlike Bidding Wars, the keyboard resizes the web view (`native`, in `platform.js` and the config): the
+guess box must stay above it; `app.css` has a short-portrait layout for the clue screen while typing.
 
 ## Generated files — rebuild, never edit
 - `engine.js` ← `engine/*.js` (ES modules, unit-tested): `node tools/make-engine.mjs`
@@ -26,7 +31,7 @@ outlines), `tools/`, `tests/`, `docs/`. The game never references them.
 - `npm run build` does both; `tests/shell.test.js` fails if either is stale.
 
 ## `sw.js` — bump `CACHE` on every deploy that touches a cached file
-`const CACHE = 'project-x-v20'` and `CONFIG.version` in `platform.js` must move
+`const CACHE = 'project-x-v21'` and `CONFIG.version` in `platform.js` must move
 together (the test checks). Without the bump, installed apps never see the change.
 
 ## Clues

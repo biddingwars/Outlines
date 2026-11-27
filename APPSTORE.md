@@ -4,7 +4,7 @@ Written on 26 November 2026, at v19, for the move to Xcode on 28 November. It fo
 `APPSTORE.md` (same shell, same wrapper) and adds what is particular to Outlines.
 
 **"You"** marks something only the account holder can do: App Store Connect, the Xcode project, a real
-device. Nothing here has run on a real iPhone or iPad yet, and the repository has no native project.
+device. Nothing here has run on a real iPhone or iPad yet. The native project is in `native/` (v21, Capacitor 8; how to build it: `native/README.md`).
 
 ## 1. What the App Review Guidelines ask, and where Outlines stands
 
@@ -35,10 +35,12 @@ device. Nothing here has run on a real iPhone or iPad yet, and the repository ha
 - **Review notes:** no sign-in needed; the game is fully offline.
 - **Content rights:** third-party content with rights (all credited in the app).
 
-## 3. The native wrapper (Capacitor, as for Bidding Wars)
+## 3. The native wrapper (`native/`, v21, as for Bidding Wars)
 
-`platform.js` already talks to Capacitor when it is there (`Preferences`, `Haptics`, `Keyboard`,
-`StatusBar`, `SplashScreen`).
+`platform.js` talks to Capacitor when it is there (`Preferences`, `Haptics`, `Keyboard`,
+`StatusBar`, `SplashScreen`). Items 1-3, 5 (in code) and 7-8 are done in `native/` (the table in `native/README.md`;
+`tests/native.test.js` checks them). Inside the app `<html class="native">` gives the nav the same room below the status bar
+as the home-screen app; check it on a device.
 
 1. **Bundle the game files**, flat as they are: `index.html`, `app.css`, the root `.js` files, `manifest.json`, the images, `countries-110m.json`, `privacy.html` and `support.html`.
    - Leave out the folders `engine/`, `packs/`, `tools/`, `tests/`, `docs/` and `dist/`.
@@ -49,7 +51,7 @@ device. Nothing here has run on a real iPhone or iPad yet, and the repository ha
    - Preferences uses `UserDefaults`: declare `NSPrivacyAccessedAPICategoryUserDefaults` with reason `CA92.1`.
 3. **No usage-description strings:** the game asks for no permission. Don't add plugins that need one.
 4. **Share sheet for the game log.** Settings → Record my games → Export uses `navigator.share` with a file. If the iOS web view does not offer it, the game falls back to Copy. That is enough for beta testers. For the App Store build you can add Capacitor's Share plugin later.
-5. **Keyboard.** The guess box sits above the keyboard through the Keyboard plugin (`resize`). Check it on the smallest supported iPhone (section 5).
+5. **Keyboard.** The web view shrinks above the keyboard (Keyboard plugin `resize: native`, v21; v20 and earlier set `none`, copied from Bidding Wars, which would have let the keyboard cover the guess box). With the keyboard up the clue screen has a short-portrait layout (seats step aside while suggestions show, a smaller ring, one suggestion under 430 px); measured in Chromium at 375×380, 390×470, 430×550 and iPad 820×780. Check it on the smallest supported iPhone (section 5).
 6. **iPad.** All four orientations, with a launch screen.
 7. **Service worker.** Not registered inside the app (`Native.is`), which is right: the files are already local.
 8. **Icons.** Use `icon-1024.png` (1024 × 1024, no transparency) for the App Store. Xcode makes the rest from it.

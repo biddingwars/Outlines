@@ -50,6 +50,8 @@
 /* added to the home screen (iPad, iPhone): the status bar is drawn over the page (black-translucent) and on iPadOS its darkening band
    reaches lower than the reported safe-area inset, which cut the top of the nav buttons. Give the nav real room below it. Not a theme token. */
 @media (display-mode: standalone){ :root{--top:max(calc(env(safe-area-inset-top,0px) + 10px),34px)} }
+/* the iOS app (Capacitor, contentInset never) draws the status bar over the page the same way; display-mode does not match there */
+html.native{--top:max(calc(env(safe-area-inset-top,0px) + 10px),34px)}
 
 /* ---------- tokens: Daylight (light) ---------- */
 :root[data-theme=light]{
@@ -670,6 +672,19 @@ html[data-motion=reduce] .rays,html[data-motion=reduce] .confetti{display:none}
 }
 /* the smallest phones on their side (320 px tall): while typing, the seats step aside for the dock */
 @media (orientation:landscape) and (max-height:359px){ .aud-r:has(.pxsugg li) .orbs{display:none} }
+/* the keyboard is up: in the iOS app the web view shrinks above it (Keyboard resize 'native', v21), so a phone in portrait has
+   about 380-550 px left. While suggestions show, the seats step aside, the ring may shrink to 56 px, and under 430 px only
+   one suggestion shows; on an iPad the right column is bounded by the screen, as on landscape phones */
+@media (orientation:portrait) and (max-height:560px){
+  .aud-r:has(.pxsugg li) .orbs{display:none}
+  .stage:not(.pxdrawstage){min-height:64px}
+}
+@media (orientation:portrait) and (max-height:430px){ .pxsugg li:nth-child(n+2){display:none} }
+@container (max-height: 120px) { .stage > .ringwrap{--ring:max(56px,calc(100cqh - 8px));margin-top:0} }
+@media (min-width:760px) and (min-height:520px){
+  .aud{grid-template-rows:minmax(0,1fr)}
+  .aud-r{max-height:100%;min-height:0}
+}
 
 /* ---------- polish: motion and small layout fixes (Reduce motion turns all of this off, above) ---------- */
 .btn,.mode,.chipbtn,.pack,.recpill{transition:transform .18s cubic-bezier(.3,1.4,.5,1),box-shadow .2s,filter .2s}
