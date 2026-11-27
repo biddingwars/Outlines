@@ -17,6 +17,10 @@ const flag = code => code.split('').map(ch => String.fromCodePoint(0x1F1E6 + ch.
 function icon(it) { return it.iso2 ? flag(it.iso2) : `<span class="ibadge">${esc(it.id)}</span>`; }
 let SELPACK = DEFAULT_PACK;                         // the pack picked on the menu
 const ini = n => { const t = String(n || '?').trim(), m = t.match(/^(.*\S)\s+(\d)$/); return ((Array.from(m ? m[1] : t)[0] || '?') + (m ? m[2] : '')).toUpperCase(); };
+/* a streak with its sign: "+3", "-2", "0". In Arabic the bidi algorithm moved the minus behind the number ("3-"), so
+   the number is wrapped in left-to-right marks when the page runs right to left (bug hunt, Nov 2026) */
+const ltr = s => document.documentElement.dir === 'rtl' ? '\u200E' + s + '\u200E' : String(s);
+const signed = n => { n = Number(n) || 0; return ltr(n > 0 ? '+' + n : String(n)); };
 const IC = (id, cls) => `<svg class="i ${cls || ''}" aria-hidden="true" focusable="false"><use href="#i-${id}"/></svg>`;
 const fmtN = n => Number(n).toLocaleString(LANG);
 const fmtX = m => (m >= 1000 ? fmtN(m) : String(m).replace('.', LANG === 'en' ? '.' : ','));
@@ -252,7 +256,7 @@ function home() {
         <button class="glass recpill" id="mrec" aria-label="${esc(t('record'))}">
           <span class="big num">${REC.won}<i>–</i>${REC.lost}${REC.drawn ? `<i>–</i>${REC.drawn}` : ''}</span>
           <span class="m"><b>${esc(t('record'))}</b><br>${has ? `${esc(gamesTxt(REC.played))} · ${Math.round(REC.won / REC.played * 100)}% ${esc(t('winRate'))}` : esc(t('noGames'))}</span>
-          ${has && REC.streak > 1 ? `<span class="streak">+${REC.streak}</span>` : ''}
+          ${has && REC.streak > 1 ? `<span class="streak">${signed(REC.streak)}</span>` : ''}
         </button>
       </div>
       <div class="m-r">
@@ -393,7 +397,7 @@ async function recordScreen() {
   const h = sheet({ title: t('record'), foot: `${REC.played ? `<button class="btn ghost" id="rs">${esc(t('reset'))}</button>` : ''}<button class="btn gold" id="rd">${esc(t('done'))}</button>`,
     body: `<p class="label">${esc(Packs.meta(SELPACK).title[LANG] || Packs.meta(SELPACK).title.en)}</p>` + (REC.played ? `
       <div class="rec3"><div class="w"><div class="rn num">${REC.won}</div><div class="rl">${esc(t('wins'))}</div></div><div><div class="rn num">${REC.lost}</div><div class="rl">${esc(t('losses'))}</div></div><div><div class="rn num">${REC.drawn}</div><div class="rl">${esc(t('draws'))}</div></div></div>
-      <div class="group">${row(t('games'), REC.played)}${row(t('winRate'), pct + '%')}${row(t('streak'), REC.streak > 0 ? '+' + REC.streak : REC.streak)}${row(t('bestStreak'), '+' + REC.best)}${row(t('avgPts'), fmtN(avg) + ' — ' + fmtN(avgBot))}${REC.bestGame ? row(t('bestGame'), fmtN(REC.bestGame.pts)) : ''}${row(t('bestSaved'), bestN)}</div>
+      <div class="group">${row(t('games'), REC.played)}${row(t('winRate'), pct + '%')}${row(t('streak'), signed(REC.streak))}${row(t('bestStreak'), ltr('+' + REC.best))}${row(t('avgPts'), fmtN(avg) + ' — ' + fmtN(avgBot))}${REC.bestGame ? row(t('bestGame'), fmtN(REC.bestGame.pts)) : ''}${row(t('bestSaved'), bestN)}</div>
       ${Object.keys(REC.byLevel).length ? `<div class="group">${Object.keys(REC.byLevel).map(k => row(lvlName(k), REC.byLevel[k].won + '/' + REC.byLevel[k].played)).join('')}</div>` : ''}
       <p class="sm">${esc(t('recordNote'))}</p>` : `<p>${esc(t('noGames'))}</p>`) });
   on('rd', () => { Snd.ui(); h.close(); });
@@ -943,7 +947,7 @@ async function reveal(sec, res, REC) {
   });
   /* the best drawing of the game and the record join the world card, which is already built */
   const best = res.best;
-  const recHtml = outcome ? `<div class="glass recpill" style="padding:8px 14px;order:0"><div class="big num" style="font-size:24px">${REC.won}<i>–</i>${REC.lost}${REC.drawn ? `<i>–</i>${REC.drawn}` : ''}</div><div class="m"><b>${esc(outcome.record ? t('newRecord') : t('record'))}</b><br>${esc(gamesTxt(REC.played))}${REC.streak ? ` · ${esc(t('streak'))} ${REC.streak > 0 ? '+' : ''}${REC.streak}` : ''}</div></div>` : res.practice ? `<div class="glass recpill" style="padding:8px 14px;order:0"><div class="m"><b>${esc(t('practiceTitle'))}</b><br>${esc(t('practiceNote'))}</div></div>` : '';
+  const recHtml = outcome ? `<div class="glass recpill" style="padding:8px 14px;order:0"><div class="big num" style="font-size:24px">${REC.won}<i>–</i>${REC.lost}${REC.drawn ? `<i>–</i>${REC.drawn}` : ''}</div><div class="m"><b>${esc(outcome.record ? t('newRecord') : t('record'))}</b><br>${esc(gamesTxt(REC.played))}${REC.streak ? ` · ${esc(t('streak'))} ${signed(REC.streak)}` : ''}</div></div>` : res.practice ? `<div class="glass recpill" style="padding:8px 14px;order:0"><div class="m"><b>${esc(t('practiceTitle'))}</b><br>${esc(t('practiceNote'))}</div></div>` : '';
   const ex = $('#extra', sec);
   buildWorld(sec, res);
   ex.insertAdjacentHTML('beforeend', `${best && best.rings && best.rings.length ? `<div class="glass gl pxbest"><div class="cap"><b>${esc(t('best'))}</b>${esc(G.config.seats[best.seat].name)} · ${esc(nameOf(best.itemId))} · ${Math.round(best.accuracy * 100)}%</div><div class="pxbestsvg">${overlaySvg({ rings: best.rings, fit: best.fit }, best.itemId, !FX.reduced)}</div></div>` : ''}${recHtml}`);
