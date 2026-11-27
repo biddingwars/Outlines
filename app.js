@@ -615,11 +615,23 @@ function clueScreen() {
   bindGameNav();
   const inp = $('#cus', sec), ul = $('#sugg', sec);
   let sugg = [], sel = -1;
+  /* the list scrolls on small phones: keep the newest clue (the give-away at 4 and 5) in view, its top first if it is
+     taller than the list (bug hunt, Nov 2026) */
+  const list = $('.pxclues', sec), cur = $('li.cur', list);
+  const showCur = () => {
+    if (!cur || !list.isConnected) return;
+    const top = cur.offsetTop - (cur.offsetParent === list ? 0 : list.offsetTop) - list.clientTop, h = cur.offsetHeight, view = list.clientHeight;
+    if (h >= view || top < list.scrollTop) list.scrollTop = top;
+    else if (top + h > list.scrollTop + view) list.scrollTop = top + h - view;
+  };
+  showCur();
+  if (window.ResizeObserver && cur) new ResizeObserver(showCur).observe(list);
   const paintSugg = () => {
     sugg = inp.value.trim() ? Engine.suggest(PACK.index, inp.value, LANG, 3) : [];
     if (sel >= sugg.length) sel = sugg.length - 1;
     ul.innerHTML = sugg.map((s, i) => `<li><button type="button" data-pick="${s.id}" aria-selected="${i === sel}">${esc(s.label)}${s.matched ? `<small>${esc(s.matched)}</small>` : ''}</button></li>`).join('');
     $$('[data-pick]', ul).forEach(b => b.onclick = () => { Snd.ui(); act({ type: 'guess', id: b.dataset.pick }); });
+    showCur();
   };
   const submit = () => {
     const p = sel >= 0 ? sugg[sel] : sugg.length === 1 ? sugg[0] : null;
