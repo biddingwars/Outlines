@@ -25,13 +25,22 @@ of `sw.js`'s `SHELL` list into `native/www` (git-ignored) for the app bundle. Ho
 Unlike Bidding Wars, the keyboard resizes the web view (`native`, in `platform.js` and the config): the
 guess box must stay above it; `app.css` has a short-portrait layout for the clue screen while typing.
 
+## Smooth clues (v22, owner: "a stutter every time you click Next clue")
+The next clue of the same turn (Next clue, a wrong guess, the clock running out) is painted into the clue screen in place
+(`CLUE.next()` in `clueScreen`, called from `act`), not built again with `go()`: rebuilding faded the whole screen in from
+opacity 0 on every clue and made the ring, seats and dock jump. What moves because the list grew glides there (FLIP, transform
+only, a spring of about 0.3 s); `next()` also sets the 350 ms tap guard, so a double tap still skips one clue. Measured in
+Chromium at 390x844, CPU 4x slower: opacity stays 1 (was 0 on every clue), the 57 ms tasks are gone, the ring moves at most
+16 px a frame. Bidding Wars v72 did the same for "Next lot" in `go()`; Outlines' `go()` keeps the screen entrance, because
+here the clue, draw and hand-over screens share a name but not a layout.
+
 ## Generated files — rebuild, never edit
 - `engine.js` ← `engine/*.js` (ES modules, unit-tested): `node tools/make-engine.mjs`
 - `pack-countries.js`, `pack-states.js` ← `packs/<id>/pack.js` + `outlines.js`: `node tools/make-packs.mjs`
 - `npm run build` does both; `tests/shell.test.js` fails if either is stale.
 
 ## `sw.js` — bump `CACHE` on every deploy that touches a cached file
-`const CACHE = 'project-x-v21'` and `CONFIG.version` in `platform.js` must move
+`const CACHE = 'project-x-v22'` and `CONFIG.version` in `platform.js` must move
 together (the test checks). Without the bump, installed apps never see the change.
 
 ## Clues

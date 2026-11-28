@@ -548,7 +548,10 @@ function act(action) {
     if (g.ok) { Snd.chime(); Haptics.success(); } else { Snd.drop(); Haptics.warning(); S0.wrong = g.id; }
   }
   if (G.phase !== before.phase || G.phase !== 'clue') return show();
-  if (ta && tb && ta.clue !== tb.clue) return show();
+  if (ta && tb && ta.clue !== tb.clue) {
+    if (CLUE && CLUE.sec.isConnected && CLUE.round === G.round && CLUE.seat === seatNow()) return CLUE.next();
+    return show();
+  }
 }
 
 const navGame = (mid, pause) => `<div class="nav"><button class="ibtn pill" id="nb">${IC('menu')}${esc(t('menu'))}</button><span class="lotpill num">${mid}</span><span class="navr">${pause ? `<button class="ibtn" id="pause" aria-label="${esc(t('pauseBtn'))}">${IC('pause')}</button>` : ''}${navBtns(false)}</span></div>`;
@@ -598,6 +601,10 @@ function handoff() {
 }
 
 /* ---- clue phase: the ring is the clock, the points sit inside it ---- */
+/* the clue list from clue `from` on: the newest is .cur, then the greyed "Clue N · Worth X" line */
+const clueItems = (clues, from, wrong, rules) => clues.slice(from).map((c, j) => `<li class="${from + j === clues.length - 1 ? 'cur' : ''}"><span class="n num">${from + j + 1}</span><span>${esc(c)}</span></li>`).join('') +
+  (clues.length < 5 ? `<li class="later"><span class="n num">${clues.length + 1}</span><span>${esc(t('clueN', { n: clues.length + 1 }))} · ${esc(t('worth', { p: Math.max(1, rules.basePoints[clues.length] - wrong * rules.wrongGuessPenalty) }))}</span></li>` : '');
+let CLUE = null;                                     // the clue screen on show: { sec, round, seat, next() }
 function clueScreen() {
   const turn = turnNow(), rules = G.config.rules;
   const clues = Engine.revealedClues(PACK, G, LANG);
@@ -613,14 +620,14 @@ function clueScreen() {
         <div class="ringwrap" id="timer" role="progressbar" aria-label="${esc(t('aTimer'))}" aria-valuemin="0" aria-valuemax="${G.config.clueSeconds}" style="--p:1">
           <svg viewBox="0 0 200 200" aria-hidden="true"><defs><linearGradient id="rg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" style="stop-color:var(--gold1)"/><stop offset="1" style="stop-color:var(--gold2)"/></linearGradient></defs>
             <circle cx="100" cy="100" r="92" fill="none" stroke="var(--track)" stroke-width="9"/><circle class="prog" cx="100" cy="100" r="92" fill="none" stroke="url(#rg)" stroke-width="9" stroke-linecap="round"/></svg>
-          <div class="in" id="bump"><div class="lbl">${esc(t('worthLabel'))}</div><div class="price"><span id="price">${worth}</span></div><div class="lbl">${esc(worth === 1 ? t('point') : t('pointsWord'))}</div></div><span class="secs num" id="secs" aria-hidden="true"></span></div>
-        <div class="holder"><span class="dot s0"></span><span>${esc(t('clueOf', { n: clues.length }))}</span></div>
+          <div class="in" id="bump"><div class="lbl">${esc(t('worthLabel'))}</div><div class="price"><span id="price">${worth}</span></div><div class="lbl" id="plbl">${esc(worth === 1 ? t('point') : t('pointsWord'))}</div></div><span class="secs num" id="secs" aria-hidden="true"></span></div>
+        <div class="holder"><span class="dot s0"></span><span id="holdN">${esc(t('clueOf', { n: clues.length }))}</span></div>
         <div class="taunt fact" id="taunt">${esc(last ? t('notIt', { p: nameOf(last) }) : t('costNote'))}</div>
       </div></div>
       <div class="aud-r">
         ${seatsHtml('clue')}
         <div class="glass dock" id="ctrl">
-          <ol class="pxclues">${clues.map((c, k) => `<li class="${k === clues.length - 1 ? 'cur' : ''}"><span class="n num">${k + 1}</span><span>${esc(c)}</span></li>`).join('')}${clues.length < 5 ? `<li class="later"><span class="n num">${clues.length + 1}</span><span>${esc(t('clueN', { n: clues.length + 1 }))} · ${esc(t('worth', { p: Math.max(1, rules.basePoints[clues.length] - wrong * rules.wrongGuessPenalty) }))}</span></li>` : ''}</ol>
+          <ol class="pxclues">${clueItems(clues, 0, wrong, rules)}</ol>
           <ul class="pxsugg" id="sugg" role="listbox"></ul>
           <div class="custom"><input class="in" id="cus" type="text" autocomplete="off" autocapitalize="words" autocorrect="off" spellcheck="false" placeholder="${esc(t('guessPh'))}" aria-label="${esc(t('guessPh'))}"><button class="btn gold" id="cb">${esc(t('guess'))}</button></div>
           <button class="btn ghost" id="pass">${esc(t('nextClue'))}</button>
@@ -632,7 +639,8 @@ function clueScreen() {
   let sugg = [], sel = -1;
   /* the list scrolls on small phones: keep the newest clue (the give-away at 4 and 5) in view, its top first if it is
      taller than the list (bug hunt, Nov 2026) */
-  const list = $('.pxclues', sec), cur = $('li.cur', list);
+  const list = $('.pxclues', sec);
+  let cur = $('li.cur', list);
   const showCur = () => {
     if (!cur || !list.isConnected) return;
     const top = cur.offsetTop - (cur.offsetParent === list ? 0 : list.offsetTop) - list.clientTop, h = cur.offsetHeight, view = list.clientHeight;
@@ -666,10 +674,48 @@ function clueScreen() {
   if (matchMedia('(hover: hover)').matches) setTimeout(() => { try { inp.focus({ preventScroll: true }); } catch (e) {} }, 50);
   const stage = $('#stage', sec);
   if (stage && !FX.reduced && clues.length === 1) FX.spring(stage, 0, 1, v => ({ opacity: Math.min(1, v * 1.5), transform: `translateY(${(1 - v) * -26}px) scale(${1.05 - .05 * v})` }), { k: 200, c: 15 });
-  Snd.chime();
-  startClock(G.config.clueSeconds, () => act({ type: 'clueTimeout' }), () => {
+  const clock = () => startClock(G.config.clueSeconds, () => act({ type: 'clueTimeout' }), () => {
     $$('[data-bot]', sec).forEach(el => { const d = botDone(+el.dataset.bot, turnNow()); el.textContent = d ? t('lockedIn') : t('thinking'); });
   });
+  /* the next clue of the same turn ("Next clue", a wrong guess, the clock running out) is painted into this screen. Building
+     the whole screen again made it fade in from nothing and slide up on every clue, and the ring, seats and dock jumped to
+     their new places (owner: "a stutter every time you click Next clue", v22). Now only the changed parts are written, and
+     what moves because the list grew glides there (FLIP, transform only). */
+  const next = () => {
+    const turn = turnNow(), clues = Engine.revealedClues(PACK, G, LANG);
+    const wrong = turn.guesses.filter(x => !x.ok).length;
+    const worth = Math.max(1, (rules.basePoints[turn.clue] || 1) - wrong * rules.wrongGuessPenalty);
+    const missed = S0.wrong; S0.wrong = null;
+    shownAt = performance.now();                                    // the 350 ms tap guard, as after go(): a double tap on Next clue skips one clue, not two
+    const movers = FX.reduced ? [] : ['.head', '#timer', '.holder', '#taunt', '#players', '#ctrl'].map(s => $(s, sec)).filter(Boolean);
+    const before = movers.map(el => el.getBoundingClientRect());
+    $('#live', sec).textContent = clues[clues.length - 1];
+    const pr = $('#price', sec), changed = pr.textContent !== String(worth);
+    pr.textContent = worth;
+    $('#plbl', sec).textContent = worth === 1 ? t('point') : t('pointsWord');
+    $('#holdN', sec).textContent = t('clueOf', { n: clues.length });
+    $('#taunt', sec).textContent = missed ? t('notIt', { p: nameOf(missed) }) : t('costNote');
+    if (cur) cur.classList.remove('cur');
+    const later = $('li.later', list); if (later) later.remove();
+    list.insertAdjacentHTML('beforeend', clueItems(clues, clues.length - 1, wrong, rules));
+    cur = $('li.cur', list);
+    inp.value = ''; sel = -1; paintSugg();                         // also scrolls the new clue into view
+    movers.forEach((el, i) => {
+      const a = before[i], b = el.getBoundingClientRect();
+      if (!b.width || !b.height) return;
+      const dx = a.left - b.left, dy = a.top - b.top, s = el.id === 'timer' ? a.width / b.width : 1;
+      if (Math.abs(dx) < .5 && Math.abs(dy) < .5 && Math.abs(s - 1) < .005) return;
+      const ox = a.left + a.width / 2 - (b.left + b.width / 2), oy = a.top + a.height / 2 - (b.top + b.height / 2);
+      FX.spring(el, 0, 1, v => ({ transform: s !== 1 ? `translate(${(ox * (1 - v)).toFixed(2)}px,${(oy * (1 - v)).toFixed(2)}px) scale(${(s + (1 - s) * v).toFixed(4)})` : `translate(${(dx * (1 - v)).toFixed(2)}px,${(dy * (1 - v)).toFixed(2)}px)` }), { k: 260, c: 26 });
+    });
+    if (changed && !FX.reduced) FX.spring($('#bump', sec), 0, 1, v => ({ transform: `scale(${(1.1 - .1 * v).toFixed(4)})` }), { k: 300, c: 16 });
+    if (matchMedia('(hover: hover)').matches) try { inp.focus({ preventScroll: true }); } catch (e) {}
+    Snd.chime();
+    clock();
+  };
+  CLUE = { sec, round: G.round, seat: seatNow(), next };
+  Snd.chime();
+  clock();
 }
 
 /* ---- drawing: the largest canvas that fits, shaped roughly like the place ---- */
